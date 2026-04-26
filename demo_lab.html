@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>systems.rs — C2: Ownership</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-deep:    #05080f;
+  --bg-base:    #090d1a;
+  --bg-raised:  #0d1220;
+  --bg-float:   #121929;
+  --bg-hover:   #18213a;
+  --border:     #1c2a42;
+  --border-hi:  #243550;
+  --accent:     #f97316;
+  --accent-lo:  rgba(249,115,22,.12);
+  --accent-hi:  #fb923c;
+  --sky:        #38bdf8;
+  --sky-lo:     rgba(56,189,248,.1);
+  --green:      #4ade80;
+  --green-lo:   rgba(74,222,128,.1);
+  --red:        #f87171;
+  --red-lo:     rgba(248,113,113,.12);
+  --yellow:     #fbbf24;
+  --purple:     #a78bfa;
+  --text-1:     #dde4f0;
+  --text-2:     #8494b0;
+  --text-3:     #3d5070;
+  --code-kw:    #38bdf8;
+  --code-fn:    #f97316;
+  --code-str:   #4ade80;
+  --code-type:  #c084fc;
+  --code-com:   #3d5070;
+  --code-num:   #fbbf24;
+  --code-mac:   #fb923c;
+  --r: 6px;
+  --r-lg: 10px;
+}
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-1);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+/* ── TOPBAR ─────────────────────────────────── */
+.topbar {
+  height: 48px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--accent);
+  letter-spacing: -.3px;
+  margin-right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.logo-dot { color: var(--text-2); }
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+  flex: 1;
+}
+.breadcrumb span { color: var(--text-3); font-size: 10px; }
+.breadcrumb .current { color: var(--text-1); font-weight: 500; }
+
+.server-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--green);
+  background: var(--green-lo);
+  border: 1px solid rgba(74,222,128,.2);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.status-dot {
+  width: 6px; height: 6px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .4; }
+}
+
+/* ── WORKSPACE ──────────────────────────────── */
+.workspace {
+  display: grid;
+  grid-template-columns: 220px 1fr 268px;
+  height: calc(100vh - 48px);
+  overflow: hidden;
+}
+
+/* ── SIDENAV ────────────────────────────────── */
+.sidenav {
+  background: var(--bg-raised);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidenav-track {
+  padding: 14px 14px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.track-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 4px;
+}
+.track-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.sidenav-labs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 8px;
+}
+.sidenav-labs::-webkit-scrollbar { width: 3px; }
+.sidenav-labs::-webkit-scrollbar-track { background: transparent; }
+.sidenav-labs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.lab-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px;
+  border-radius: var(--r);
+  cursor: pointer;
+  transition: background .15s;
+  margin-bottom: 1px;
+}
+.lab-item:hover { background: var(--bg-hover); }
+.lab-item.active {
+  background: var(--accent-lo);
+  border: 1px solid rgba(249,115,22,.2);
+}
+.lab-item.done .lab-icon { color: var(--green); }
+.lab-item.active .lab-icon { color: var(--accent); }
+.lab-item.locked { opacity: .38; cursor: default; }
+.lab-item.locked:hover { background: transparent; }
+
+.lab-icon {
+  font-size: 12px;
+  width: 16px;
+  text-align: center;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+.lab-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-3);
+  width: 22px;
+  flex-shrink: 0;
+}
+.lab-title {
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lab-item.active .lab-title { color: var(--text-1); font-weight: 500; }
+.lab-item.done .lab-title { color: var(--text-2); }
+
+.sidenav-footer {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+.progress-bar-wrap {
+  background: var(--bg-float);
+  border-radius: 3px;
+  height: 4px;
+  margin-bottom: 6px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--yellow));
+  border-radius: 3px;
+  width: 16%;
+  transition: width .4s ease;
+}
+.progress-label {
+  font-size: 11px;
+  color: var(--text-3);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ── MAIN LAB VIEW ──────────────────────────── */
+.labview {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+.lab-meta {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.lab-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: .5px;
+  margin-bottom: 3px;
+}
+.lab-heading {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--text-1);
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+.lab-desc {
+  font-size: 13px;
+  color: var(--text-2);
+  max-width: 580px;
+  line-height: 1.65;
+}
+
+/* ── LAB BODY (editor + diagram split) ─────── */
+.lab-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  min-height: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── EDITOR PANE ────────────────────────────── */
+.editor-pane {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.pane-header {
+  height: 36px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.pane-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  letter-spacing: .3px;
+  flex: 1;
+}
+.pane-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--bg-float);
+  color: var(--text-3);
+  border: 1px solid var(--border);
+}
+
+.code-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 14px 0;
+  background: var(--bg-deep);
+}
+.code-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+.code-scroll::-webkit-scrollbar-track { background: transparent; }
+.code-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.code-block {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  line-height: 1.75;
+  counter-reset: line;
+}
+.code-line {
+  display: flex;
+  align-items: center;
+  padding: 0 14px 0 0;
+  position: relative;
+  transition: background .2s;
+}
+.code-line:hover { background: var(--bg-raised); }
+.code-line.hl-active { background: rgba(249,115,22,.07); border-left: 2px solid var(--accent); }
+.code-line.hl-error { background: rgba(248,113,113,.07); border-left: 2px solid var(--red); }
+
+.ln {
+  width: 42px;
+  text-align: right;
+  padding-right: 14px;
+  color: var(--text-3);
+  font-size: 11px;
+  user-select: none;
+  flex-shrink: 0;
+}
+.code-line.hl-active .ln { color: var(--accent); }
+.code-line.hl-error .ln { color: var(--red); }
+
+.code-text { white-space: pre; }
+
+/* Syntax colors */
+.kw   { color: var(--code-kw); }
+.fn   { color: var(--code-fn); }
+.str  { color: var(--code-str); }
+.ty   { color: var(--code-type); }
+.cm   { color: var(--code-com); font-style: italic; }
+.num  { color: var(--code-num); }
+.mac  { color: var(--code-mac); }
+.var  { color: var(--text-1); }
+
+.error-marker {
+  display: none;
+  margin-left: 8px;
+  font-size: 10px;
+  color: var(--red);
+  background: var(--red-lo);
+  border: 1px solid rgba(248,113,113,.25);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.error-marker.show { display: inline; }
+
+.step-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-raised);
+  flex-shrink: 0;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--r);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--bg-float);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn:hover { background: var(--bg-hover); color: var(--text-1); border-color: var(--border-hi); }
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.btn-primary:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
+
+.step-indicator {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-3);
+  flex: 1;
+  text-align: center;
+}
+
+/* ── DIAGRAM PANE ───────────────────────────── */
+.diagram-pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.diagram-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  gap: 10px;
+  position: relative;
+}
+
+.step-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  text-align: center;
+  background: var(--accent-lo);
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(249,115,22,.2);
+  transition: opacity .3s;
+  min-height: 26px;
+}
+
+.memory-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  width: 100%;
+  max-width: 420px;
+}
+
+.mem-region {
+  flex: 1;
+}
+.mem-region-label {
+  font-size: 9.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-3);
+  font-weight: 600;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.mem-arrow-zone {
+  width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-top: 28px; /* align with var boxes */
+}
+
+.var-box {
+  background: var(--bg-float);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  margin-bottom: 8px;
+  overflow: hidden;
+  transition: all .35s cubic-bezier(.4,0,.2,1);
+  opacity: 0;
+  transform: translateY(8px);
+}
+.var-box.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.var-box.moved {
+  border-color: rgba(248,113,113,.35);
+  background: rgba(248,113,113,.04);
+}
+.var-box.error-state {
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px rgba(248,113,113,.15);
+}
+
+.var-box-header {
+  padding: 4px 9px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.var-box.moved .var-box-header { color: var(--red); }
+
+.moved-badge {
+  display: none;
+  font-size: 9px;
+  background: var(--red-lo);
+  color: var(--red);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid rgba(248,113,113,.25);
+}
+.var-box.moved .moved-badge { display: inline; }
+
+.var-fields { padding: 6px 0; }
+.var-field {
+  display: flex;
+  align-items: center;
+  padding: 2px 9px;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.field-name { color: var(--text-3); width: 28px; flex-shrink: 0; }
+.field-val { color: var(--sky); }
+.field-val.is-ptr {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+}
+.ptr-arrow-inline {
+  display: inline-block;
+  color: var(--text-3);
+  font-size: 10px;
+}
+
+.var-box.moved .field-val { color: var(--text-3); text-decoration: line-through; opacity: .5; }
+
+/* Heap box */
+.heap-box {
+  background: var(--bg-float);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all .35s cubic-bezier(.4,0,.2,1);
+}
+.heap-box.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.heap-box-header {
+  padding: 4px 9px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--purple);
+}
+.heap-bytes {
+  display: flex;
+  padding: 6px 9px 4px;
+  gap: 3px;
+}
+.heap-byte {
+  width: 18px;
+  height: 18px;
+  background: rgba(167,139,250,.1);
+  border: 1px solid rgba(167,139,250,.2);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--purple);
+}
+
+/* SVG arrow between stack and heap */
+.arrow-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Connector arrow drawn with CSS */
+.arrow-connector {
+  width: 100%;
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+.arrow-line {
+  flex: 1;
+  height: 1px;
+  background: var(--accent);
+  position: relative;
+  opacity: 0;
+  transition: opacity .4s;
+}
+.arrow-line.visible { opacity: 1; }
+.arrow-line::after {
+  content: '►';
+  position: absolute;
+  right: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent);
+  font-size: 10px;
+}
+.arrow-line.s2-arrow {
+  background: var(--sky);
+}
+.arrow-line.s2-arrow::after { color: var(--sky); }
+
+.arrow-label {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .4s;
+}
+.arrow-line.visible .arrow-label { opacity: 1; }
+
+/* ── OUTPUT PANE ────────────────────────────── */
+.output-pane {
+  height: 130px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-deep);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.output-header {
+  height: 32px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.output-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  letter-spacing: .3px;
+  flex: 1;
+}
+.output-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+.output-tag.error { background: var(--red-lo); color: var(--red); border: 1px solid rgba(248,113,113,.25); }
+.output-tag.ok { background: var(--green-lo); color: var(--green); border: 1px solid rgba(74,222,128,.25); }
+.output-tag.idle { background: var(--bg-float); color: var(--text-3); border: 1px solid var(--border); }
+
+.output-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 10px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  line-height: 1.7;
+}
+.output-scroll::-webkit-scrollbar { width: 4px; }
+.output-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.out-idle { color: var(--text-3); font-style: italic; }
+.out-error { color: var(--red); }
+.out-error-code { color: var(--yellow); }
+.out-hint { color: var(--sky); }
+.out-ok { color: var(--green); }
+.out-muted { color: var(--text-3); }
+
+/* ── RIGHT PANEL ────────────────────────────── */
+.rightpanel {
+  border-left: 1px solid var(--border);
+  background: var(--bg-raised);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.rpanel-section {
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.rpanel-section:last-child { border-bottom: none; flex: 1; }
+
+.rpanel-header {
+  padding: 10px 14px 8px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.rpanel-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-3);
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  flex: 1;
+}
+
+/* Tests */
+.test-list { padding: 0 10px 10px; }
+.test-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--r);
+  margin-bottom: 2px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  transition: background .15s;
+}
+.test-item:hover { background: var(--bg-hover); cursor: pointer; }
+.test-icon { font-size: 12px; width: 14px; }
+.test-name { flex: 1; color: var(--text-2); font-size: 11px; }
+.test-item.pass .test-icon { color: var(--green); }
+.test-item.pass .test-name { color: var(--text-1); }
+.test-item.fail .test-icon { color: var(--red); }
+.test-item.fail .test-name { color: var(--red); }
+.test-item.pending .test-icon { color: var(--text-3); }
+
+.test-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 10px;
+  font-size: 11px;
+}
+.ts-pass { color: var(--green); }
+.ts-fail { color: var(--red); }
+.ts-sep { color: var(--text-3); }
+
+/* Portal card */
+.portal-card {
+  margin: 12px 12px 0;
+  background: var(--sky-lo);
+  border: 1px solid rgba(56,189,248,.18);
+  border-radius: var(--r-lg);
+  padding: 12px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.portal-card:hover {
+  background: rgba(56,189,248,.14);
+  border-color: rgba(56,189,248,.3);
+}
+.portal-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--sky);
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.portal-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-1);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+.portal-desc {
+  font-size: 11px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.portal-dest {
+  margin-top: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--sky);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Anchor card */
+.anchor-card {
+  margin: 10px 12px;
+  background: rgba(249,115,22,.07);
+  border: 1px solid rgba(249,115,22,.15);
+  border-radius: var(--r-lg);
+  padding: 12px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.anchor-card:hover {
+  background: rgba(249,115,22,.11);
+  border-color: rgba(249,115,22,.25);
+}
+.anchor-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.anchor-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-1);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+.anchor-desc {
+  font-size: 11px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.anchor-dest {
+  margin-top: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rpanel-spacer { flex: 1; }
+</style>
+</head>
+<body>
+
+<!-- ── TOPBAR ── -->
+<header class="topbar">
+  <div class="logo">
+    systems<span class="logo-dot">.</span>rs
+  </div>
+  <div class="breadcrumb">
+    <span>rust-core</span>
+    <span>›</span>
+    <span class="current">C2 · Ownership</span>
+  </div>
+  <div class="server-status">
+    <span class="status-dot"></span>
+    servidor local · localhost:7878
+  </div>
+</header>
+
+<div class="workspace">
+
+  <!-- ── SIDENAV ── -->
+  <nav class="sidenav">
+    <div class="sidenav-track">
+      <div class="track-label">Track</div>
+      <div class="track-name">🦀 Rust Core</div>
+    </div>
+    <div class="sidenav-labs">
+      <div class="lab-item done">
+        <span class="lab-icon">✓</span>
+        <span class="lab-code">C1</span>
+        <span class="lab-title">La superficie</span>
+      </div>
+      <div class="lab-item active">
+        <span class="lab-icon">▶</span>
+        <span class="lab-code">C2</span>
+        <span class="lab-title">Ownership</span>
+      </div>
+      <div class="lab-item locked">
+        <span class="lab-icon">○</span>
+        <span class="lab-code">C3</span>
+        <span class="lab-title">Abstracciones</span>
+      </div>
+      <div class="lab-item locked">
+        <span class="lab-icon">○</span>
+        <span class="lab-code">C4</span>
+        <span class="lab-title">El borde: unsafe</span>
+      </div>
+      <div class="lab-item locked">
+        <span class="lab-icon">○</span>
+        <span class="lab-code">C5</span>
+        <span class="lab-title">Concurrencia</span>
+      </div>
+      <div class="lab-item locked">
+        <span class="lab-icon">○</span>
+        <span class="lab-code">C6</span>
+        <span class="lab-title">Rust en el sistema</span>
+      </div>
+    </div>
+    <div class="sidenav-footer">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill"></div>
+      </div>
+      <div class="progress-label">
+        <span>Progreso</span>
+        <span>1 / 6 labs</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── MAIN LAB VIEW ── -->
+  <main class="labview">
+
+    <div class="lab-meta">
+      <div class="lab-num">RUST CORE · C2</div>
+      <div class="lab-heading">El gran descubrimiento</div>
+      <div class="lab-desc">
+        Rust hace algo que ningún lenguaje popular hace: <strong style="color:var(--text-1)">transfiere la propiedad de los datos</strong>
+        en lugar de copiarlos o recolectarlos. Entender esto es entender Rust. 
+        Avanzá paso a paso y observá qué pasa en memoria.
+      </div>
+    </div>
+
+    <div class="lab-body">
+
+      <!-- EDITOR -->
+      <div class="editor-pane">
+        <div class="pane-header">
+          <span class="pane-title">CÓDIGO · src/main.rs</span>
+          <span class="pane-badge" id="fileBadge">sin cambios</span>
+        </div>
+
+        <div class="code-scroll">
+          <div class="code-block">
+
+            <div class="code-line" id="line1">
+              <span class="ln">1</span>
+              <span class="code-text"><span class="kw">fn</span> <span class="fn">main</span>() {</span>
+            </div>
+            <div class="code-line" id="line2">
+              <span class="ln">2</span>
+              <span class="code-text">    <span class="kw">let</span> <span class="var">s1</span> = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);</span>
+            </div>
+            <div class="code-line" id="line3">
+              <span class="ln">3</span>
+              <span class="code-text">    <span class="kw">let</span> <span class="var">s2</span> = <span class="var">s1</span>;           <span class="cm">// s1 se mueve a s2</span></span>
+            </div>
+            <div class="code-line" id="line4">
+              <span class="ln">4</span>
+              <span class="code-text"></span>
+            </div>
+            <div class="code-line" id="line5">
+              <span class="ln">5</span>
+              <span class="code-text">    <span class="mac">println!</span>(<span class="str">"{}"</span>, <span class="var">s1</span>); <span id="errMarker" class="error-marker">E0382</span></span>
+            </div>
+            <div class="code-line" id="line6">
+              <span class="ln">6</span>
+              <span class="code-text">    <span class="mac">println!</span>(<span class="str">"{}"</span>, <span class="var">s2</span>);  <span class="cm">// esto sí funciona</span></span>
+            </div>
+            <div class="code-line" id="line7">
+              <span class="ln">7</span>
+              <span class="code-text">}</span>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="step-controls">
+          <button class="btn" id="btnPrev" disabled onclick="prevStep()">← Anterior</button>
+          <span class="step-indicator" id="stepIndicator">paso 0 / 3</span>
+          <button class="btn" id="btnNext" onclick="nextStep()">Siguiente →</button>
+          <button class="btn btn-primary" id="btnRun" onclick="runCode()" style="margin-left:4px">▶ Run</button>
+        </div>
+      </div>
+
+      <!-- DIAGRAM -->
+      <div class="diagram-pane">
+        <div class="pane-header">
+          <span class="pane-title">MEMORIA EN TIEMPO REAL</span>
+          <span class="pane-badge" id="memBadge">esperando</span>
+        </div>
+
+        <div class="diagram-body">
+
+          <div class="step-label" id="stepLabel">
+            Avanzá los pasos para ver qué pasa en memoria
+          </div>
+
+          <div class="memory-layout">
+
+            <!-- STACK -->
+            <div class="mem-region">
+              <div class="mem-region-label">Stack</div>
+
+              <div class="var-box" id="boxS1">
+                <div class="var-box-header">
+                  s1 <span class="moved-badge">moved</span>
+                </div>
+                <div class="var-fields">
+                  <div class="var-field">
+                    <span class="field-name">ptr</span>
+                    <span class="field-val is-ptr"><span style="color:var(--accent)">0x5f2a</span></span>
+                  </div>
+                  <div class="var-field">
+                    <span class="field-name">len</span>
+                    <span class="field-val">5</span>
+                  </div>
+                  <div class="var-field">
+                    <span class="field-name">cap</span>
+                    <span class="field-val">5</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="var-box" id="boxS2">
+                <div class="var-box-header">
+                  s2
+                </div>
+                <div class="var-fields">
+                  <div class="var-field">
+                    <span class="field-name">ptr</span>
+                    <span class="field-val is-ptr"><span style="color:var(--sky)">0x5f2a</span></span>
+                  </div>
+                  <div class="var-field">
+                    <span class="field-name">len</span>
+                    <span class="field-val">5</span>
+                  </div>
+                  <div class="var-field">
+                    <span class="field-name">cap</span>
+                    <span class="field-val">5</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- ARROWS ZONE -->
+            <div class="mem-arrow-zone" style="flex-direction:column; gap:6px; padding-top: 4px;">
+              <div style="position:relative; width:100%; display:flex; flex-direction:column; gap:6px;">
+                <div class="arrow-line" id="arrowS1">
+                  <span class="arrow-label">owner</span>
+                </div>
+                <div class="arrow-line s2-arrow" id="arrowS2" style="opacity:0"></div>
+              </div>
+            </div>
+
+            <!-- HEAP -->
+            <div class="mem-region">
+              <div class="mem-region-label">Heap</div>
+              <div class="heap-box" id="heapBox">
+                <div class="heap-box-header">String data</div>
+                <div class="heap-bytes">
+                  <div class="heap-byte">h</div>
+                  <div class="heap-byte">e</div>
+                  <div class="heap-byte">l</div>
+                  <div class="heap-byte">l</div>
+                  <div class="heap-byte">o</div>
+                </div>
+                <div class="var-fields" style="padding-bottom:6px">
+                  <div class="var-field">
+                    <span class="field-name">len</span>
+                    <span class="field-val">5</span>
+                  </div>
+                  <div class="var-field">
+                    <span class="field-name">cap</span>
+                    <span class="field-val">5</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- insight callout -->
+          <div id="insightBox" style="
+            display:none;
+            background: var(--red-lo);
+            border: 1px solid rgba(248,113,113,.25);
+            border-radius: var(--r-lg);
+            padding: 10px 14px;
+            font-size: 12px;
+            color: var(--text-2);
+            max-width: 420px;
+            width: 100%;
+            line-height: 1.6;
+          ">
+            <strong style="color:var(--red)">¿Por qué el error?</strong><br>
+            s1 y s2 apuntarían al <em>mismo</em> dato en heap. Cuando ambas salieran de scope,
+            Rust haría <span style="color:var(--code-kw)">drop()</span> dos veces sobre la misma dirección.
+            <strong style="color:var(--text-1)">Double free</strong>. Rust lo prohíbe en tiempo de compilación.
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /lab-body -->
+
+    <!-- OUTPUT -->
+    <div class="output-pane">
+      <div class="output-header">
+        <span class="output-title">OUTPUT</span>
+        <span class="output-tag idle" id="outputTag">en espera</span>
+      </div>
+      <div class="output-scroll" id="outputScroll">
+        <span class="out-idle">// ejecutá el código para ver el output del compilador</span>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── RIGHT PANEL ── -->
+  <aside class="rightpanel">
+
+    <!-- Tests -->
+    <div class="rpanel-section">
+      <div class="rpanel-header">
+        <span class="rpanel-label">Tests</span>
+      </div>
+      <div class="test-list">
+        <div class="test-item pass">
+          <span class="test-icon">✓</span>
+          <span class="test-name">test_move_invalidates</span>
+        </div>
+        <div class="test-item pass">
+          <span class="test-icon">✓</span>
+          <span class="test-name">test_clone_is_deep</span>
+        </div>
+        <div class="test-item fail">
+          <span class="test-icon">✗</span>
+          <span class="test-name">test_borrow_scope</span>
+        </div>
+        <div class="test-item pending">
+          <span class="test-icon">○</span>
+          <span class="test-name">test_drop_order</span>
+        </div>
+        <div class="test-item pending">
+          <span class="test-icon">○</span>
+          <span class="test-name">test_lifetime_basic</span>
+        </div>
+      </div>
+      <div class="test-summary">
+        <span class="ts-pass">2 ok</span>
+        <span class="ts-sep">·</span>
+        <span class="ts-fail">1 fail</span>
+        <span class="ts-sep">·</span>
+        <span style="color:var(--text-3)">2 pending</span>
+      </div>
+    </div>
+
+    <!-- Portal -->
+    <div class="rpanel-section" style="padding: 12px 12px 0;">
+      <div class="rpanel-header" style="padding: 0 2px 8px;">
+        <span class="rpanel-label">🔭 Portal</span>
+      </div>
+      <div class="portal-card">
+        <div class="portal-tag">
+          <span>→</span> OS Track
+        </div>
+        <div class="portal-title">¿Quién libera esa memoria?</div>
+        <div class="portal-desc">
+          Rust sabe cuándo hacer <code style="color:var(--sky)">drop()</code> porque el OS siempre lo hizo manualmente. 
+          Mirá cómo funciona el heap allocator real.
+        </div>
+        <div class="portal-dest">
+          <span>B3</span> <span style="color:var(--text-3)">·</span> <span>Allocators</span> <span>→</span>
+        </div>
+      </div>
+      <div class="portal-card" style="margin-top:8px; background: rgba(167,139,250,.07); border-color: rgba(167,139,250,.18);">
+        <div class="portal-tag" style="color:var(--purple)">
+          <span>→</span> Compilers Track
+        </div>
+        <div class="portal-title">El borrow checker por dentro</div>
+        <div class="portal-desc">
+          El análisis de ownership es un análisis de flujo de datos — exactamente lo que hace un compilador.
+        </div>
+        <div class="portal-dest" style="color:var(--purple)">
+          <span>A3</span> <span style="color:var(--text-3)">·</span> <span>Análisis semántico</span> <span>→</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Anchor -->
+    <div class="rpanel-section" style="padding: 12px;">
+      <div class="rpanel-header" style="padding: 0 2px 8px;">
+        <span class="rpanel-label">⚓ Anchor</span>
+      </div>
+      <div class="anchor-card">
+        <div class="anchor-tag">
+          <span>←</span> si te trabaste
+        </div>
+        <div class="anchor-title">¿El stack y el heap no te cierran?</div>
+        <div class="anchor-desc">
+          Volvé a C1 — la sección sobre tipos primitivos explica por qué 
+          <code style="color:var(--accent)">i32</code> se copia y <code style="color:var(--accent)">String</code> no.
+        </div>
+        <div class="anchor-dest">
+          <span>←</span> <span>C1 · La superficie</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="rpanel-spacer"></div>
+
+  </aside>
+
+</div><!-- /workspace -->
+
+<script>
+let step = 0;
+const STEPS = 4;
+
+const states = [
+  {
+    label: 'Avanzá los pasos para ver qué pasa en memoria',
+    memBadge: 'esperando',
+    s1: false, s2: false, heap: false,
+    s1moved: false, s1error: false,
+    arrowS1: false, arrowS2: false,
+    insight: false,
+    lines: [],
+    fileBadge: 'sin cambios',
+  },
+  {
+    label: 'let s1 = String::from("hello") — se aloca en heap',
+    memBadge: 's1 vive',
+    s1: true, s2: false, heap: true,
+    s1moved: false, s1error: false,
+    arrowS1: true, arrowS2: false,
+    insight: false,
+    lines: ['line2'],
+    fileBadge: 'paso 1/3',
+  },
+  {
+    label: 'let s2 = s1 — el ownership se transfiere. s1 ya no existe.',
+    memBadge: 's2 es owner',
+    s1: true, s2: true, heap: true,
+    s1moved: true, s1error: false,
+    arrowS1: false, arrowS2: true,
+    insight: false,
+    lines: ['line3'],
+    fileBadge: 'paso 2/3',
+  },
+  {
+    label: 'println!(s1) — error: s1 fue movida. Rust lo detecta.',
+    memBadge: 'double free!',
+    s1: true, s2: true, heap: true,
+    s1moved: true, s1error: true,
+    arrowS1: false, arrowS2: true,
+    insight: true,
+    lines: ['line5'],
+    fileBadge: 'error detectado',
+  },
+];
+
+function applyState(s) {
+  // boxes
+  setVisible('boxS1', s.s1);
+  setVisible('boxS2', s.s2);
+  setVisible('heapBox', s.heap);
+
+  // moved / error
+  const b1 = document.getElementById('boxS1');
+  b1.classList.toggle('moved', s.s1moved);
+  b1.classList.toggle('error-state', s.s1error);
+
+  // arrows
+  document.getElementById('arrowS1').classList.toggle('visible', s.arrowS1);
+  document.getElementById('arrowS2').style.opacity = s.arrowS2 ? '1' : '0';
+
+  // code highlights
+  ['line1','line2','line3','line4','line5','line6','line7'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('hl-active', 'hl-error');
+  });
+  s.lines.forEach(id => {
+    const el = document.getElementById(id);
+    if (s.s1error && id === 'line5') {
+      el.classList.add('hl-error');
+    } else {
+      el.classList.add('hl-active');
+    }
+  });
+
+  // error marker
+  document.getElementById('errMarker').classList.toggle('show', s.s1error);
+
+  // insight
+  document.getElementById('insightBox').style.display = s.insight ? 'block' : 'none';
+
+  // labels
+  document.getElementById('stepLabel').textContent = s.label;
+  document.getElementById('memBadge').textContent = s.memBadge;
+  document.getElementById('fileBadge').textContent = s.fileBadge;
+
+  // step indicator
+  document.getElementById('stepIndicator').textContent = `paso ${step} / ${STEPS - 1}`;
+
+  // buttons
+  document.getElementById('btnPrev').disabled = step === 0;
+  document.getElementById('btnNext').disabled = step === STEPS - 1;
+}
+
+function setVisible(id, visible) {
+  const el = document.getElementById(id);
+  el.classList.toggle('visible', visible);
+}
+
+function nextStep() {
+  if (step < STEPS - 1) { step++; applyState(states[step]); }
+}
+
+function prevStep() {
+  if (step > 0) { step--; applyState(states[step]); }
+}
+
+function runCode() {
+  const tag = document.getElementById('outputTag');
+  const scroll = document.getElementById('outputScroll');
+
+  scroll.innerHTML = '<span style="color:var(--text-3)">compilando...</span>';
+  tag.className = 'output-tag idle';
+  tag.textContent = 'compilando';
+
+  setTimeout(() => {
+    // Jump to error state
+    step = 3;
+    applyState(states[step]);
+
+    tag.className = 'output-tag error';
+    tag.textContent = '1 error';
+
+    scroll.innerHTML = `
+<span class="out-error"><span class="out-error-code">error[E0382]</span>: borrow of moved value: <span style="color:var(--accent)">s1</span></span>
+<span class="out-muted"> --> src/main.rs:5:20</span>
+<span class="out-muted">  |</span>
+<span class="out-muted">2 |     let s1 = String::from("hello");</span>
+<span class="out-muted">  |         <span style="color:var(--text-2)">--</span> move occurs because <span style="color:var(--accent)">s1</span> has type <span style="color:var(--code-type)">String</span></span>
+<span class="out-muted">3 |     let s2 = s1;</span>
+<span class="out-muted">  |              <span style="color:var(--text-2)">--</span> value moved here</span>
+<span class="out-muted">5 |     println!("{}", s1);</span>
+<span class="out-error">  |                    <span style="color:var(--red)">^^</span> value borrowed here after move</span>
+<span class="out-muted">  |</span>
+<span class="out-hint">  = note: consider cloning <span style="color:var(--sky)">s1</span> si necesitás ambas variables</span>
+`;
+  }, 420);
+}
+
+// keyboard navigation
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') nextStep();
+  if (e.key === 'ArrowLeft') prevStep();
+  if (e.key === 'Enter') runCode();
+});
+
+// init
+applyState(states[0]);
+</script>
+</body>
+</html>

@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forja — Vision Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Tokens ─────────────────────────────────────────────────────────────── */
+:root {
+  --bg:        #0f1117;
+  --bg-s:      #161b22;
+  --bg-e:      #1c2128;
+  --b:         #30363d;
+  --bs:        #21262d;
+  --t1:        #e6edf3;
+  --t2:        #8b949e;
+  --tm:        #484f58;
+  --accent:    #e05c1a;
+  --ag:        #ff7b35;
+  --ok:        #3fb950;
+  --warn:      #d29922;
+  --err:       #f85149;
+  --info:      #388bfd;
+  --rust:      #e05c1a;
+  --comp:      #58a6ff;
+  --os:        #bc8cff;
+  --gold:      #f0c040;
+  --f-prose:   'Inter', system-ui, sans-serif;
+  --f-mono:    'JetBrains Mono', 'Cascadia Code', monospace;
+}
+
+/* ── Reset ──────────────────────────────────────────────────────────────── */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; background:var(--bg); color:var(--t1); font-family:var(--f-prose);
+  font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased; overflow:hidden; }
+button { font-family:inherit; cursor:pointer; }
+.hidden { display:none !important; }
+
+/* ── Topbar ─────────────────────────────────────────────────────────────── */
+#topbar {
+  height:48px; background:var(--bg-s); border-bottom:1px solid var(--bs);
+  display:flex; align-items:center; padding:0 20px; gap:0;
+  position:fixed; top:0; left:0; right:0; z-index:200;
+}
+.logo { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.logo-mark {
+  width:24px; height:24px; background:var(--accent); border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+}
+.logo-word { font-family:var(--f-mono); font-size:14px; font-weight:600;
+  color:var(--t1); letter-spacing:.5px; }
+.sep { width:1px; height:18px; background:var(--b); margin:0 16px; flex-shrink:0; }
+.pillar-tabs { display:flex; gap:2px; }
+.ptab {
+  background:none; border:none; font-size:12px; font-weight:500;
+  padding:5px 12px; border-radius:6px; color:var(--tm);
+  transition:color .12s, background .12s;
+}
+.ptab:hover { color:var(--t2); background:var(--bg-e); }
+.ptab.active { background:var(--bg-e); }
+.ptab.rust.active      { color:var(--rust); }
+.ptab.compilers.active { color:var(--comp); }
+.ptab.os.active        { color:var(--os); }
+.spacer { flex:1; }
+.demo-badge {
+  font-family:var(--f-mono); font-size:9px; font-weight:600; letter-spacing:1.5px;
+  color:var(--tm); border:1px solid var(--bs); padding:3px 8px; border-radius:4px;
+}
+.back-btn {
+  background:none; border:none; font-size:12px; font-weight:500;
+  color:var(--t2); padding:5px 10px; border-radius:6px; display:flex;
+  align-items:center; gap:6px; transition:color .12s, background .12s;
+}
+.back-btn:hover { color:var(--t1); background:var(--bg-e); }
+.lab-crumb { font-size:12px; color:var(--tm); margin-left:4px; }
+.depth-tabs { display:flex; gap:3px; margin-left:auto; }
+.dtab {
+  font-family:var(--f-mono); font-size:10px; font-weight:600; letter-spacing:.5px;
+  padding:3px 9px; border-radius:4px; border:1px solid var(--bs); color:var(--tm);
+  background:none; transition:all .12s;
+}
+.dtab.active { color:var(--t1); background:var(--bg-e); border-color:var(--b); }
+.dtab.locked { opacity:.35; cursor:not-allowed; }
+
+/* ── Main layout ────────────────────────────────────────────────────────── */
+#main { margin-top:48px; height:calc(100vh - 48px); position:relative; overflow:hidden; }
+
+/* ── Tree view ──────────────────────────────────────────────────────────── */
+#tree-view { height:100%; display:flex; flex-direction:column; padding:32px 40px 20px; }
+.tree-header { display:flex; align-items:baseline; gap:14px; margin-bottom:28px; flex-shrink:0; }
+.tree-title { font-size:22px; font-weight:600; }
+.tree-title.rust      { color:var(--rust); }
+.tree-title.compilers { color:var(--comp); }
+.tree-title.os        { color:var(--os); }
+.tree-stats { font-size:12px; color:var(--tm); }
+#tree-canvas { flex:1; overflow:auto; }
+#tree-canvas svg { display:block; }
+
+/* ── Lab view ───────────────────────────────────────────────────────────── */
+#lab-view { height:100%; display:flex; flex-direction:column; }
+#lab-nav {
+  height:48px; background:var(--bg-s); border-bottom:1px solid var(--bs);
+  display:flex; align-items:center; padding:0 20px; gap:0; flex-shrink:0;
+}
+#lab-body { flex:1; display:flex; min-height:0; }
+
+/* Theory column */
+.theory-col {
+  width:42%; min-width:300px; overflow-y:auto; border-right:1px solid var(--bs);
+  display:flex; flex-direction:column;
+}
+.theory-head {
+  padding:24px 28px 20px; border-bottom:1px solid var(--bs); flex-shrink:0;
+}
+.concept-badge {
+  font-family:var(--f-mono); font-size:10px; font-weight:600;
+  letter-spacing:1.2px; color:var(--accent); margin-bottom:6px;
+}
+.lab-title { font-size:19px; font-weight:600; color:var(--t1); }
+.theory-body { padding:24px 28px 36px; flex:1; }
+
+/* Prose */
+.prose { font-size:13.5px; color:var(--t2); line-height:1.75; }
+.prose h1 { font-size:18px; font-weight:600; color:var(--t1); margin:0 0 18px;
+  padding-bottom:12px; border-bottom:1px solid var(--bs); }
+.prose h2 { font-size:11px; font-weight:600; color:var(--t2); margin:24px 0 10px;
+  text-transform:uppercase; letter-spacing:.8px; }
+.prose p  { margin:0 0 13px; }
+.prose strong { color:var(--t1); font-weight:600; }
+.prose code {
+  font-family:var(--f-mono); font-size:12px; color:var(--ag);
+  background:var(--bg-e); border:1px solid var(--bs);
+  padding:1px 5px; border-radius:4px;
+}
+.prose pre {
+  background:#0a0d12; border:1px solid var(--bs); border-radius:8px;
+  padding:14px 16px; margin:0 0 14px; overflow-x:auto; position:relative;
+}
+.prose pre code {
+  background:none; border:none; padding:0; font-size:12.5px; color:var(--t1);
+  line-height:1.55;
+}
+.prose ul { padding-left:18px; margin:0 0 13px; }
+.prose li { margin-bottom:4px; }
+
+/* ── Viz column ─────────────────────────────────────────────────────────── */
+.right-col { flex:1; min-width:0; display:flex; flex-direction:column; background:#0a0d12; }
+
+/* Viz block */
+.viz-block {
+  background:var(--bg-s); border-bottom:1px solid var(--bs);
+  padding:16px 20px 14px; flex-shrink:0;
+}
+.viz-label {
+  font-family:var(--f-mono); font-size:9px; font-weight:600;
+  letter-spacing:1.5px; color:var(--tm); text-transform:uppercase; margin-bottom:12px;
+}
+.viz-body { min-height:200px; position:relative; }
+.viz-controls {
+  display:flex; align-items:center; gap:10px; margin-top:14px;
+  padding-top:12px; border-top:1px solid var(--bs);
+}
+.viz-btn {
+  background:var(--bg-e); border:1px solid var(--b); color:var(--t2);
+  font-size:11px; padding:4px 12px; border-radius:5px;
+  transition:color .1s, background .1s;
+}
+.viz-btn:hover { color:var(--t1); background:#252d38; }
+.viz-btn:disabled { opacity:.3; cursor:default; }
+.viz-step-info { font-family:var(--f-mono); font-size:11px; color:var(--tm); flex:1; }
+.viz-code-hint {
+  font-family:var(--f-mono); font-size:11px; color:var(--t2);
+  background:var(--bg-e); border:1px solid var(--bs); border-radius:5px;
+  padding:3px 10px;
+}
+
+/* ── Ownership viz ──────────────────────────────────────────────────────── */
+.ov-canvas {
+  display:grid; grid-template-columns:1fr auto 1fr; gap:10px;
+  align-items:start; min-height:180px;
+}
+.mem-region {
+  background:var(--bg-e); border:1px solid var(--bs); border-radius:8px;
+  padding:12px; min-height:160px;
+}
+.mem-region-title {
+  font-family:var(--f-mono); font-size:9px; letter-spacing:1.5px;
+  color:var(--tm); margin-bottom:10px;
+}
+.var-box {
+  border:1px solid var(--b); border-radius:6px; padding:8px 10px;
+  margin-bottom:8px; transition:all .35s ease; position:relative;
+  overflow:hidden;
+}
+.var-box.alive  { border-color:#2ea043; background:#0d1f12; }
+.var-box.moved  { border-color:#f85149; background:#1a0a0a; opacity:.5; }
+.var-box.active { border-color:var(--accent); background:#1a1208;
+  box-shadow:0 0 12px rgba(224,92,26,.2); }
+.var-box.error-flash { animation:flash-red .5s ease; }
+.var-name { font-family:var(--f-mono); font-size:12px; font-weight:500;
+  color:var(--t1); margin-bottom:4px; }
+.var-name.moved { text-decoration:line-through; color:var(--err); }
+.var-fields { display:flex; flex-direction:column; gap:2px; }
+.var-field { font-family:var(--f-mono); font-size:10px; color:var(--t2); }
+.moved-tag {
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  font-family:var(--f-mono); font-size:9px; font-weight:600; letter-spacing:.5px;
+  color:var(--err); background:#2a0a0a; border:1px solid var(--err);
+  border-radius:3px; padding:1px 5px;
+}
+.arrow-col { display:flex; flex-direction:column; justify-content:center;
+  align-items:center; gap:8px; padding-top:40px; }
+.ov-arrow { font-size:18px; transition:color .35s; }
+.ov-arrow.alive  { color:var(--ok); }
+.ov-arrow.moved  { color:var(--err); opacity:.4; }
+.ov-arrow.active { color:var(--accent); }
+.heap-box {
+  background:#0a1520; border:1px solid #1e3a5f; border-radius:6px;
+  padding:8px 10px; margin-bottom:8px; transition:all .35s;
+}
+.heap-box.active { border-color:var(--accent); box-shadow:0 0 10px rgba(224,92,26,.15); }
+.heap-title { font-family:var(--f-mono); font-size:10px; color:var(--info); margin-bottom:6px; }
+.heap-bytes { display:flex; gap:4px; flex-wrap:wrap; }
+.heap-byte {
+  width:22px; height:22px; background:#0d1f33; border:1px solid #1e3a5f;
+  border-radius:3px; font-family:var(--f-mono); font-size:9px; color:var(--info);
+  display:flex; align-items:center; justify-content:center;
+}
+.ov-error-msg {
+  font-family:var(--f-mono); font-size:11px; line-height:1.5;
+  color:var(--err); background:#1a0505; border:1px solid #5a1010;
+  border-radius:6px; padding:10px 12px; margin-top:10px;
+  display:none;
+}
+.ov-error-msg.visible { display:block; animation:fadein .3s ease; }
+
+/* ── Memory layout viz ──────────────────────────────────────────────────── */
+.mv-canvas { display:grid; grid-template-columns:1fr auto 1fr; gap:10px; min-height:180px; }
+.mv-region { background:var(--bg-e); border:1px solid var(--bs); border-radius:8px;
+  padding:12px; position:relative; overflow:hidden; }
+.mv-region-title { font-family:var(--f-mono); font-size:9px; letter-spacing:1.5px;
+  color:var(--tm); margin-bottom:10px; }
+.stack-frame { border:1px solid #2a3550; border-radius:6px; padding:8px;
+  background:#0d1a2a; margin-bottom:8px; transition:all .3s; }
+.stack-frame-label { font-family:var(--f-mono); font-size:9px; color:var(--info);
+  letter-spacing:.5px; margin-bottom:6px; opacity:.7; }
+.stack-var {
+  display:flex; align-items:center; gap:8px; margin-bottom:6px;
+  opacity:0; max-height:0; overflow:hidden; transition:opacity .3s, max-height .3s;
+}
+.stack-var.visible { opacity:1; max-height:60px; }
+.sv-name { font-family:var(--f-mono); font-size:11px; color:var(--t2); min-width:60px; }
+.sv-type { font-family:var(--f-mono); font-size:10px; color:var(--tm); min-width:50px; }
+.sv-val  { font-family:var(--f-mono); font-size:11px; color:var(--ok); }
+.sv-ptr  { font-family:var(--f-mono); font-size:10px; color:var(--info);
+  display:flex; align-items:center; gap:4px; }
+.sv-ptr::after { content:'→'; color:var(--accent); }
+.heap-obj {
+  background:#0a1520; border:1px solid #1e3a5f; border-radius:6px;
+  padding:8px 10px; margin-bottom:8px;
+  opacity:0; transition:opacity .3s .1s; transform:translateX(4px);
+}
+.heap-obj.visible { opacity:1; transform:translateX(0); }
+.heap-obj-title { font-family:var(--f-mono); font-size:10px; color:var(--info); margin-bottom:5px; }
+.heap-chars { display:flex; gap:3px; }
+.heap-char { font-family:var(--f-mono); font-size:11px; color:var(--comp);
+  background:#0d1f33; padding:2px 5px; border-radius:3px; border:1px solid #1e3a5f; }
+.mv-arrow-col { display:flex; align-items:center; justify-content:center;
+  font-size:20px; color:var(--accent); opacity:0; transition:opacity .3s; }
+.mv-arrow-col.visible { opacity:1; }
+.dropped { animation:fadeout .4s ease forwards; }
+
+/* ── Lexer viz ──────────────────────────────────────────────────────────── */
+.lv-input {
+  font-family:var(--f-mono); font-size:13px; line-height:1;
+  margin-bottom:14px; display:flex; flex-wrap:wrap; gap:0; user-select:none;
+}
+.lv-char { padding:2px 0; transition:background .1s, color .1s; border-radius:2px; }
+.lv-char.scanned { color:var(--tm); }
+.lv-char.current { background:var(--accent); color:#fff; border-radius:2px; padding:2px 1px; }
+.lv-tokens { display:flex; flex-wrap:wrap; gap:6px; min-height:80px; }
+.token-card {
+  display:flex; flex-direction:column; gap:1px; padding:6px 8px; border-radius:5px;
+  border:1px solid; animation:pop .2s ease;
+}
+.tc-val  { font-family:var(--f-mono); font-size:12px; font-weight:500; }
+.tc-type { font-family:var(--f-mono); font-size:9px; letter-spacing:.5px; opacity:.7; }
+.token-card.kw     { border-color:rgba(224,92,26,.4); background:rgba(224,92,26,.08);  }
+.token-card.kw     .tc-val  { color:var(--rust); }
+.token-card.kw     .tc-type { color:var(--rust); }
+.token-card.ident  { border-color:rgba(230,237,243,.15); background:rgba(230,237,243,.04); }
+.token-card.ident  .tc-val  { color:var(--t1); }
+.token-card.ident  .tc-type { color:var(--t2); }
+.token-card.punct  { border-color:rgba(56,139,253,.3); background:rgba(56,139,253,.07); }
+.token-card.punct  .tc-val  { color:var(--info); }
+.token-card.punct  .tc-type { color:var(--info); }
+.token-card.op     { border-color:rgba(210,153,34,.3); background:rgba(210,153,34,.07); }
+.token-card.op     .tc-val  { color:var(--warn); }
+.token-card.op     .tc-type { color:var(--warn); }
+.token-card.lit    { border-color:rgba(63,185,80,.3); background:rgba(63,185,80,.07); }
+.token-card.lit    .tc-val  { color:var(--ok); }
+.token-card.lit    .tc-type { color:var(--ok); }
+
+/* ── Editor ─────────────────────────────────────────────────────────────── */
+.editor-section { flex:1; display:flex; flex-direction:column; min-height:0; }
+.exercise-bar {
+  padding:10px 16px; background:var(--bg-s); border-bottom:1px solid var(--bs);
+  display:flex; align-items:flex-start; gap:14px; flex-shrink:0;
+}
+.ex-label { flex:1; }
+.ex-id   { font-family:var(--f-mono); font-size:10px; color:var(--tm);
+  letter-spacing:.5px; margin-bottom:4px; }
+.ex-desc { font-size:12.5px; color:var(--t2); line-height:1.45; }
+.ex-actions { display:flex; gap:7px; flex-shrink:0; padding-top:2px; }
+.btn-reset {
+  background:none; border:1px solid var(--b); color:var(--tm);
+  font-size:11px; padding:5px 10px; border-radius:5px;
+  transition:color .1s, border-color .1s;
+}
+.btn-reset:hover { color:var(--t2); border-color:var(--t2); }
+.btn-run {
+  background:var(--accent); border:none; color:#fff;
+  font-family:var(--f-mono); font-size:11px; font-weight:500;
+  padding:5px 14px; border-radius:5px; display:flex; align-items:center;
+  gap:5px; transition:background .12s;
+}
+.btn-run:hover { background:var(--ag); }
+.btn-run:disabled { background:var(--bg-e); color:var(--tm); cursor:default; }
+.editor-wrap { flex:1; position:relative; overflow:hidden; min-height:80px; }
+.editor-gutter {
+  position:absolute; top:0; left:0; bottom:0; width:38px;
+  background:#0a0d12; border-right:1px solid #15191f;
+  padding:14px 0; display:flex; flex-direction:column;
+  align-items:flex-end; overflow:hidden; user-select:none;
+}
+.ln { font-family:var(--f-mono); font-size:11px; color:#2d3444; line-height:1.5;
+  padding-right:7px; height:18px; }
+textarea.code {
+  position:absolute; top:0; left:38px; right:0; bottom:0;
+  background:#0a0d12; color:var(--t1); font-family:var(--f-mono);
+  font-size:13px; line-height:1.5; padding:14px 16px;
+  border:none; outline:none; resize:none; tab-size:4;
+  caret-color:var(--accent); width:calc(100% - 38px);
+}
+textarea.code::selection { background:rgba(56,139,253,.18); }
+
+/* ── Output ─────────────────────────────────────────────────────────────── */
+.output-panel {
+  height:170px; border-top:1px solid var(--bs);
+  display:flex; flex-direction:column; flex-shrink:0;
+}
+.output-tabs {
+  height:30px; background:var(--bg-s); border-bottom:1px solid var(--bs);
+  display:flex; align-items:center; padding:0 12px; gap:4px; flex-shrink:0;
+}
+.otab {
+  font-size:11px; color:var(--tm); padding:2px 8px; border-radius:4px;
+  background:none; border:none; transition:all .1s;
+}
+.otab.active { color:var(--t1); background:var(--bg-e); }
+.output-status { margin-left:auto; display:flex; align-items:center;
+  gap:6px; font-family:var(--f-mono); font-size:10px; }
+.dot { width:6px; height:6px; border-radius:50%; }
+.dot.running  { background:var(--warn); animation:pulse 1s infinite; }
+.dot.ok       { background:var(--ok); }
+.dot.error    { background:var(--err); }
+.output-body {
+  flex:1; overflow-y:auto; padding:10px 16px;
+  font-family:var(--f-mono); font-size:12px; line-height:1.6;
+  white-space:pre; color:var(--t2);
+}
+.out-idle    { color:var(--tm); font-style:italic; font-family:var(--f-prose);
+  font-size:12px; white-space:normal; }
+.out-info    { color:#3d4a60; }
+.out-ok      { color:var(--ok); }
+.out-err     { color:var(--err); }
+.out-main    { color:var(--t1); }
+.out-warn    { color:var(--warn); }
+
+/* ── Challenge ──────────────────────────────────────────────────────────── */
+.challenge-block {
+  margin:20px 0 0; padding:14px 16px; border:1px solid #2a2000;
+  border-radius:8px; background:#0f0e00;
+}
+.ch-header { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.ch-star { color:var(--gold); font-size:14px; }
+.ch-title { font-size:12px; font-weight:600; color:var(--gold); }
+.ch-desc { font-size:12.5px; color:var(--t2); margin-bottom:10px; line-height:1.5; }
+.ch-note { font-size:11px; color:var(--tm); margin-bottom:10px; }
+.ch-btn {
+  background:none; border:1px solid #5a4a00; color:var(--gold);
+  font-size:11px; padding:5px 14px; border-radius:5px;
+  transition:background .1s; float:right;
+}
+.ch-btn:hover { background:#1a1500; }
+
+/* ── Animations ─────────────────────────────────────────────────────────── */
+@keyframes fadein  { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+@keyframes fadeout { from { opacity:1; } to { opacity:0; } }
+@keyframes flash-red { 0%,100% { box-shadow:none; } 50% { box-shadow:0 0 16px rgba(248,81,73,.6); border-color:var(--err); } }
+@keyframes pulse   { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+@keyframes pop     { from { opacity:0; transform:scale(.85); } to { opacity:1; transform:none; } }
+@keyframes node-in { from { opacity:0; } to { opacity:1; } }
+
+/* ── SVG skill tree ─────────────────────────────────────────────────────── */
+.tree-node { cursor:pointer; }
+.tree-node.locked { cursor:default; }
+.tree-node .nb { transition:filter .15s; }
+.tree-node.clickable:hover .nb { filter:brightness(1.18); }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Topbar -->
+  <header id="topbar">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <path d="M2.5 11L6.5 2L10.5 11" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4 8H9" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="logo-word">Forja</span>
+    </div>
+    <div class="sep"></div>
+    <div class="pillar-tabs" id="pillar-tabs"></div>
+    <div class="spacer"></div>
+    <span class="demo-badge">VISION DEMO</span>
+  </header>
+
+  <main id="main">
+    <!-- ── Tree view ── -->
+    <div id="tree-view">
+      <div class="tree-header">
+        <h1 class="tree-title rust" id="tree-title">Rust</h1>
+        <span class="tree-stats" id="tree-stats"></span>
+      </div>
+      <div id="tree-canvas"></div>
+    </div>
+
+    <!-- ── Lab view ── -->
+    <div id="lab-view" class="hidden">
+      <div id="lab-nav">
+        <button class="back-btn" id="back-btn">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M7.5 2.5L3.5 6l4 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Map
+        </button>
+        <span class="lab-crumb" id="lab-crumb"></span>
+        <div class="depth-tabs">
+          <button class="dtab active">D1</button>
+          <button class="dtab locked">D2</button>
+          <button class="dtab locked">D3</button>
+        </div>
+      </div>
+      <div id="lab-body"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+'use strict'
+
+// ══════════════════════════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════════════════════════
+const NW = 176, NH = 58, NR = 7
+
+const GRAPH = {
+  rust: {
+    nodes: [
+      { id:'tooling',         name:'Tooling',           status:'completed', time:20, x:260, y:36,  labId:null },
+      { id:'variables-types', name:'Variables & Types',  status:'started',   time:30, x:40,  y:166, labId:'vars-types' },
+      { id:'functions',       name:'Functions',          status:'available', time:20, x:220, y:166, labId:null },
+      { id:'control-flow',    name:'Control Flow',       status:'available', time:25, x:440, y:166, labId:null },
+      { id:'stack-heap',      name:'Stack & Heap',       status:'available', time:45, x:330, y:166, labId:'stack-heap' },
+      { id:'structs',         name:'Structs',            status:'locked',    time:35, x:40,  y:296, labId:null },
+      { id:'enums-match',     name:'Enums & Match',      status:'locked',    time:40, x:220, y:296, labId:null },
+      { id:'ownership',       name:'Ownership',          status:'available', time:50, x:400, y:296, labId:'ownership' },
+      { id:'borrowing',       name:'Borrowing',          status:'locked',    time:55, x:180, y:426, labId:null },
+      { id:'lifetimes',       name:'Lifetimes',          status:'locked',    time:65, x:400, y:426, labId:null },
+    ],
+    edges: [
+      ['tooling','variables-types'],['tooling','functions'],['tooling','control-flow'],['tooling','stack-heap'],
+      ['variables-types','structs'],['functions','enums-match'],['stack-heap','ownership'],
+      ['structs','borrowing'],['ownership','borrowing'],['borrowing','lifetimes'],
+    ]
+  },
+  compilers: {
+    nodes: [
+      { id:'formal-langs',   name:'Formal Languages',    status:'available', time:40, x:240, y:36,  labId:null },
+      { id:'lexing',         name:'Lexing',               status:'available', time:50, x:80,  y:166, labId:'lexing' },
+      { id:'parsing-rd',     name:'Parsing — RD',         status:'locked',    time:60, x:280, y:166, labId:null },
+      { id:'parsing-pratt',  name:'Parsing — Pratt',      status:'locked',    time:55, x:460, y:166, labId:null },
+      { id:'ast-design',     name:'AST Design',           status:'locked',    time:45, x:240, y:296, labId:null },
+      { id:'type-checking',  name:'Type Checking',        status:'locked',    time:75, x:240, y:426, labId:null },
+    ],
+    edges: [
+      ['formal-langs','lexing'],['formal-langs','parsing-rd'],['lexing','parsing-rd'],
+      ['parsing-rd','parsing-pratt'],['parsing-pratt','ast-design'],['ast-design','type-checking'],
+    ]
+  },
+  os: {
+    nodes: [
+      { id:'bare-metal',  name:'Bare Metal',        status:'locked', time:60, x:240, y:36,  labId:null },
+      { id:'interrupts',  name:'Interrupts',         status:'locked', time:50, x:240, y:166, labId:null },
+      { id:'phys-mem',    name:'Physical Memory',    status:'locked', time:65, x:100, y:296, labId:null },
+      { id:'virt-mem',    name:'Virtual Memory',     status:'locked', time:80, x:380, y:296, labId:null },
+      { id:'processes',   name:'Processes',          status:'locked', time:70, x:240, y:426, labId:null },
+    ],
+    edges: [
+      ['bare-metal','interrupts'],['interrupts','phys-mem'],['interrupts','virt-mem'],
+      ['phys-mem','processes'],['virt-mem','processes'],
+    ]
+  }
+}
+
+const STATUS_STYLE = {
+  completed: { bg:'#0d2018', stroke:'#2ea043', sw:1.5, text:'#4caf6e',  sub:'#1a4d28', dot:'#3fb950', filter:'none' },
+  started:   { bg:'#1a1208', stroke:'#e05c1a', sw:1.5, text:'#ff9a5c',  sub:'#9a4010', dot:'#e05c1a', filter:'url(#glow-o)' },
+  available: { bg:'#181e28', stroke:'#30363d', sw:1,   text:'#c9d1d9',  sub:'#484f58', dot:'#4a5568', filter:'none' },
+  locked:    { bg:'#161b22', stroke:'#21262d', sw:1,   text:'#484f58',  sub:'#30363d', dot:'',        filter:'none' },
+}
+const STATUS_ICON = { completed:'✓', mastered:'★', started:'●', locked:'⊘' }
+
+// ══════════════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════════════
+const state = {
+  view: 'tree',
+  pillar: 'rust',
+  labId: null,
+  tooltip: null,
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id)
+const svgEl = (tag, attrs={}) => {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag)
+  Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k, v))
+  return el
+}
+function hl(code) {
+  const kws = ['fn','let','mut','if','else','while','for','in','match','struct','enum','impl',
+    'trait','pub','use','mod','return','true','false','const','static','type','where','unsafe',
+    'async','await','move','ref','loop','break','continue','self','Self','super','crate']
+  const types = ['i8','i16','i32','i64','i128','isize','u8','u16','u32','u64','u128','usize',
+    'f32','f64','bool','char','String','Vec','Box','Option','Result','Some','None','Ok','Err','str']
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  const lines = code.split('\n')
+  return lines.map(line => {
+    let out = ''
+    let i = 0
+    while (i < line.length) {
+      // comment
+      if (line[i]==='/' && line[i+1]==='/') {
+        out += `<span style="color:#484f58">${esc(line.slice(i))}</span>`; break
+      }
+      // string
+      if (line[i]==='"') {
+        let j = i+1; while (j<line.length && line[j]!=='"') { if(line[j]==='\\')j++; j++ }
+        out += `<span style="color:#a5c261">${esc(line.slice(i,j+1))}</span>`; i=j+1; continue
+      }
+      // char
+      if (line[i]==="'") {
+        let j = i+1; while (j<line.length && line[j]!=="'") { if(line[j]==='\\')j++; j++ }
+        out += `<span style="color:#a5c261">${esc(line.slice(i,j+1))}</span>`; i=j+1; continue
+      }
+      // macro
+      const mac = line.slice(i).match(/^([a-z_]\w*)!/)
+      if (mac) {
+        out += `<span style="color:#bc8cff">${mac[1]}</span>!`; i+=mac[1].length+1; continue
+      }
+      // word
+      const word = line.slice(i).match(/^[a-zA-Z_]\w*/)
+      if (word) {
+        const w = word[0]
+        if (kws.includes(w)) out += `<span style="color:#e05c1a;font-weight:500">${w}</span>`
+        else if (types.includes(w)) out += `<span style="color:#58a6ff">${w}</span>`
+        else if (/^[A-Z]/.test(w)) out += `<span style="color:#58a6ff">${w}</span>`
+        else out += `<span style="color:#e6edf3">${w}</span>`
+        i+=w.length; continue
+      }
+      // number
+      const num = line.slice(i).match(/^\d+/)
+      if (num) { out += `<span style="color:#b5cea8">${num[0]}</span>`; i+=num[0].length; continue }
+      out += esc(line[i]); i++
+    }
+    return out
+  }).join('\n')
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SKILL TREE
+// ══════════════════════════════════════════════════════════════════════════
+function renderTree() {
+  const { nodes, edges } = GRAPH[state.pillar]
+  const W = Math.max(...nodes.map(n=>n.x+NW)) + 60
+  const H = Math.max(...nodes.map(n=>n.y+NH)) + 80
+  const completed = nodes.filter(n=>n.status==='completed'||n.status==='mastered').length
+  const available = nodes.filter(n=>n.status==='available'||n.status==='started').length
+
+  $('tree-title').className = 'tree-title '+state.pillar
+  $('tree-title').textContent = state.pillar==='os'?'Operating Systems':
+    state.pillar.charAt(0).toUpperCase()+state.pillar.slice(1)
+  $('tree-stats').textContent = `${completed}/${nodes.length} completed · ${available} available`
+
+  const canvas = $('tree-canvas')
+  canvas.innerHTML = ''
+  const ns = 'http://www.w3.org/2000/svg'
+  const svg = document.createElementNS(ns,'svg')
+  svg.setAttribute('width', W); svg.setAttribute('height', H)
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
+
+  // defs
+  const defs = svgEl('defs')
+  defs.innerHTML = `
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="12" r=".65" fill="rgba(255,255,255,.04)"/>
+    </pattern>
+    <filter id="glow-o" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#e05c1a" flood-opacity=".35"/>
+    </filter>
+    <filter id="glow-g" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#3fb950" flood-opacity=".25"/>
+    </filter>
+    <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <path d="M0,1L5,3L0,5" stroke="#30363d" stroke-width="1" fill="none"/>
+    </marker>
+    <marker id="arr-o" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <path d="M0,1L5,3L0,5" stroke="#e05c1a" stroke-width="1" fill="none" opacity=".5"/>
+    </marker>
+    <marker id="arr-g" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <path d="M0,1L5,3L0,5" stroke="#2ea043" stroke-width="1" fill="none" opacity=".5"/>
+    </marker>`
+  svg.appendChild(defs)
+
+  // background
+  const bgRect = svgEl('rect',{width:W,height:H,fill:'var(--bg)'})
+  svg.appendChild(bgRect)
+  const dotRect = svgEl('rect',{width:W,height:H,fill:'url(#dots)'})
+  svg.appendChild(dotRect)
+
+  // resolve node map
+  const nodeMap = {}
+  nodes.forEach(n => nodeMap[n.id] = n)
+
+  // edges
+  edges.forEach(([fromId, toId]) => {
+    const from = nodeMap[fromId], to = nodeMap[toId]
+    if (!from||!to) return
+    const x1=from.x+NW/2, y1=from.y+NH, x2=to.x+NW/2, y2=to.y
+    const mid=y1+(y2-y1)*.5
+    const isO = from.status==='started', isG = from.status==='completed'
+    const stroke = isO?'rgba(224,92,26,.25)':isG?'rgba(46,160,67,.2)':'#21262d'
+    const mkr = isO?'url(#arr-o)':isG?'url(#arr-g)':'url(#arr)'
+    const path = svgEl('path',{
+      d:`M${x1} ${y1}C${x1} ${mid},${x2} ${mid},${x2} ${y2}`,
+      fill:'none', stroke, 'stroke-width':'1.5', 'marker-end':mkr
+    })
+    svg.appendChild(path)
+  })
+
+  // nodes
+  nodes.forEach((node, i) => {
+    const s = STATUS_STYLE[node.status]
+    const isClickable = node.status !== 'locked'
+    const icon = STATUS_ICON[node.status] || ''
+    const opacity = node.status==='locked'?'0.38':'1'
+
+    const g = svgEl('g',{ transform:`translate(${node.x},${node.y})`,
+      opacity, class:`tree-node ${isClickable?'clickable':'locked'}`,
+      style:`animation:node-in .3s ease ${i*0.04}s both` })
+
+    // bg
+    const bg = svgEl('rect',{ width:NW, height:NH, rx:NR,
+      fill:s.bg, stroke:s.stroke, 'stroke-width':s.sw,
+      filter:s.filter, class:'nb' })
+    g.appendChild(bg)
+
+    // left stripe
+    if (s.dot) {
+      const stripe = svgEl('rect',{ x:0, y:0, width:4, height:NH,
+        fill:s.dot, rx:NR, opacity:'.8' })
+      g.appendChild(stripe)
+      const stripe2 = svgEl('rect',{ x:4, y:0, width:3, height:NH,
+        fill:s.dot, opacity:'.12' })
+      g.appendChild(stripe2)
+    }
+
+    // depth badge
+    const dbg = svgEl('rect',{ x:NW-26, y:8, width:18, height:13, rx:3,
+      fill:'rgba(0,0,0,.35)' })
+    g.appendChild(dbg)
+    const dt = svgEl('text',{ x:NW-17, y:18.5, 'text-anchor':'middle',
+      'font-family':'JetBrains Mono, monospace', 'font-size':9,
+      'font-weight':600, fill:s.sub, 'letter-spacing':'.5' })
+    dt.textContent = 'D1'
+    g.appendChild(dt)
+
+    // icon
+    if (icon) {
+      const it = svgEl('text',{ x:14, y:NH/2+1, 'text-anchor':'middle',
+        'dominant-baseline':'middle', 'font-size':11, fill:s.dot||s.sub })
+      it.textContent = icon
+      g.appendChild(it)
+    }
+
+    // name
+    const nt = svgEl('text',{
+      x: icon?24:12, y:NH/2,
+      'dominant-baseline':'middle',
+      'font-family':'Inter, system-ui, sans-serif',
+      'font-size':12, 'font-weight':500, fill:s.text,
+    })
+    nt.textContent = node.name
+    g.appendChild(nt)
+
+    // time
+    const tt = svgEl('text',{ x:NW-30, y:NH-8, 'text-anchor':'middle',
+      'font-family':'Inter, system-ui, sans-serif', 'font-size':9.5, fill:s.sub })
+    tt.textContent = `${node.time}m`
+    g.appendChild(tt)
+
+    // click
+    if (isClickable) {
+      g.addEventListener('click', () => {
+        if (node.labId) openLab(node.labId)
+      })
+    }
+
+    // tooltip
+    g.addEventListener('mouseenter', e => showTooltip(e, node))
+    g.addEventListener('mouseleave', hideTooltip)
+
+    svg.appendChild(g)
+  })
+
+  canvas.appendChild(svg)
+}
+
+// Tooltip
+let tooltipEl = null
+function showTooltip(e, node) {
+  if (!tooltipEl) {
+    tooltipEl = document.createElement('div')
+    tooltipEl.style.cssText = `position:fixed;background:#1c2128;border:1px solid #30363d;
+      border-radius:8px;padding:11px 14px;font-size:12px;color:var(--t2);pointer-events:none;
+      min-width:170px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.5);`
+    document.body.appendChild(tooltipEl)
+  }
+  const prereqNote = node.status==='locked'
+    ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #21262d;
+        font-size:11px;color:#5a1010">Complete prerequisites to unlock</div>` : ''
+  const labNote = node.labId && node.status!=='locked'
+    ? `<div style="margin-top:6px;font-size:11px;color:var(--accent)">Click to open lab →</div>` : ''
+  tooltipEl.innerHTML = `
+    <div style="font-weight:600;color:var(--t1);font-size:13px;margin-bottom:7px">${node.name}</div>
+    <div style="display:flex;justify-content:space-between;gap:12px">
+      <span>Depth 1–3</span><span style="color:var(--tm)">${node.time} min</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:12px">
+      <span>Status</span><span style="color:var(--tm)">${node.status}</span>
+    </div>${prereqNote}${labNote}`
+  tooltipEl.style.display = 'block'
+  const r = tooltipEl.getBoundingClientRect()
+  let x = e.clientX + 14, y = e.clientY + 14
+  if (x + r.width + 20 > window.innerWidth) x = e.clientX - r.width - 10
+  if (y + r.height + 20 > window.innerHeight) y = e.clientY - r.height - 10
+  tooltipEl.style.left = x+'px'
+  tooltipEl.style.top  = y+'px'
+}
+function hideTooltip() {
+  if (tooltipEl) tooltipEl.style.display='none'
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// LAB DEFINITIONS
+// ══════════════════════════════════════════════════════════════════════════
+const LABS = {
+  'ownership': {
+    title: 'Ownership',
+    concept: 'ownership', pillar:'rust', depth:1,
+    badge: 'Rust · Ownership · Depth 1',
+    prose: `<h1>Ownership: The Core Model</h1>
+<p>Rust's ownership system is not a feature you configure — it's a property of the type system that
+the compiler enforces statically, at <strong>zero runtime cost</strong>. There is no garbage
+collector. There is no reference counting by default. Just rules the compiler checks.</p>
+<h2>The invariant</h2>
+<p>Every value has exactly one owner. When the owner goes out of scope, the value is dropped.
+When ownership is transferred — a <strong>move</strong> — the original binding becomes invalid.
+The compiler refuses to compile code that violates this.</p>
+<h2>Strings are not Copy</h2>
+<p>Primitive types like <code>i32</code> implement the <code>Copy</code> trait — assigning them
+duplicates the bits. <code>String</code> does not. It owns a heap allocation, and silently
+duplicating that allocation would either be dangerously aliased or unexpectedly expensive.
+Rust chooses neither: it moves.</p>
+<p>After <code>let s2 = s1</code>, the variable <code>s1</code> no longer exists.
+Trying to use it is a compile error — not a runtime crash, not undefined behavior.
+A compile error.</p>
+<h2>Walk the visualization</h2>
+<p>Step through the visualization on the right. Watch what happens to <code>s1</code>'s entry
+on the stack when ownership transfers to <code>s2</code>. Then observe what the compiler
+says when you try to use the moved value — and what the fix looks like.</p>`,
+    vizType: 'ownership',
+    exId: 'ex-1',
+    exDesc: 'The code below has a move error. Fix it so the program compiles and prints "hello" twice — without cloning.',
+    starter: `fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1;
+
+    // Both lines should print.
+    // One of them won't compile. Fix it.
+    println!("{}", s1);
+    println!("{}", s2);
+}`,
+    errOutput: `   Compiling forja-run v0.1.0
+\x1b[1merror[E0382]\x1b[0m: borrow of moved value: \`s1\`
+ --> src/main.rs:7:20
+  |
+2 |     let s1 = String::from("hello");
+  |         \x1b[4m--\x1b[0m move occurs because \`s1\` has type \`String\`
+3 |     let s2 = s1;
+  |              \x1b[4m--\x1b[0m value moved here
+...
+7 |     println!("{}", s1);
+  |                    \x1b[31m^^\x1b[0m value borrowed here after move
+  |
+  = note: this error occurs in the expansion of the macro \`println\`
+
+For more information try \`rustc --explain E0382\`
+error: could not compile \`forja-run\` due to 1 previous error`,
+    okOutput: `   Compiling forja-run v0.1.0
+    Finished dev [unoptimized + debuginfo] target(s) in 0.41s
+     Running \`target/debug/forja-run\`
+hello
+hello`,
+    challenge: {
+      type: 'constrained',
+      desc: 'Make both println! calls work without using .clone() — you may change the type of s1 or how s2 is declared.',
+      note: "Hint: what if s2 didn't take ownership at all?"
+    }
+  },
+
+  'stack-heap': {
+    title: 'Stack & Heap',
+    concept: 'stack-heap', pillar:'rust', depth:1,
+    badge: 'Rust · Memory · Depth 1',
+    prose: `<h1>Stack & Heap</h1>
+<p>Every value in Rust lives somewhere in memory. Where it lives determines how it's
+accessed, how long it lives, and what it costs to allocate and free.</p>
+<h2>The stack</h2>
+<p>Local variables live on the stack. The stack grows and shrinks as functions are called and
+return. Allocation is instant — the stack pointer moves. The compiler knows the size of every
+stack allocation at compile time.</p>
+<p><code>let x: i32 = 42;</code> allocates exactly 4 bytes on the stack. When the function
+returns, those bytes are reclaimed automatically — no allocator involved, no bookkeeping.</p>
+<h2>The heap</h2>
+<p>The heap is for data whose size is unknown at compile time, or that needs to outlive the
+stack frame that created it. <code>String::from("hello")</code> calls the allocator and
+returns a pointer to heap memory.</p>
+<p>But the <code>String</code> <em>value itself</em> lives on the stack — it's a struct with
+three fields: a pointer to the heap buffer, a length, and a capacity. When the <code>String</code>
+goes out of scope, its <code>Drop</code> implementation frees the heap buffer.</p>
+<h2>Walk the visualization</h2>
+<p>Step through to see exactly what the stack and heap look like at each line of code.
+Pay attention to what <code>String</code> actually is — three words on the stack — versus
+what it points to on the heap.</p>`,
+    vizType: 'memory',
+    exId: 'ex-1',
+    exDesc: 'Declare an i32, a bool, and a String. Print all three. Predict which values live on the stack and which on the heap.',
+    starter: `fn main() {
+    let n: i32 = 42;
+    let flag: bool = true;
+    let s = String::from("hello");
+
+    println!("n    = {}", n);
+    println!("flag = {}", flag);
+    println!("s    = {}", s);
+
+    // Which of these is on the heap?
+    // Where is the length of \`s\` stored?
+}`,
+    errOutput: null,
+    okOutput: `   Compiling forja-run v0.1.0
+    Finished dev [unoptimized + debuginfo] target(s) in 0.38s
+     Running \`target/debug/forja-run\`
+n    = 42
+flag = true
+s    = hello`,
+    challenge: {
+      type: 'investigation',
+      desc: 'Without running the code: what is std::mem::size_of::<String>()? And std::mem::size_of::<&str>()? Why are they different?',
+      note: 'Check your answer by adding those println! calls, then read the output.'
+    }
+  },
+
+  'lexing': {
+    title: 'Lexing',
+    concept: 'lexing', pillar:'compilers', depth:1,
+    badge: 'Compilers · Lexing · Depth 1',
+    prose: `<h1>Lexing: The First Pass</h1>
+<p>A compiler doesn't read source code as a character stream — the grammar would be enormous.
+The first thing it does is transform that stream into a flat list of <strong>tokens</strong>:
+the atomic units of meaning in the language.</p>
+<h2>What is a token?</h2>
+<p>A token is a (type, value) pair. The type classifies what the token <em>is</em>
+(keyword, identifier, literal, punctuation). The value is the original source text.
+For <code>let x = 42;</code>, the tokens are:</p>
+<ul>
+  <li><code>KEYWORD("let")</code> — a reserved word</li>
+  <li><code>IDENT("x")</code> — a user-defined name</li>
+  <li><code>OP("=")</code> — an operator</li>
+  <li><code>INT_LIT(42)</code> — an integer literal</li>
+  <li><code>PUNCT(";")</code> — punctuation</li>
+</ul>
+<p>The lexer doesn't know what these mean in context. That's the parser's job.
+The lexer only classifies.</p>
+<h2>Why a separate phase?</h2>
+<p>Separating lexing from parsing means the grammar operates on tokens — a small, uniform
+vocabulary — not raw characters. This makes the grammar dramatically simpler and more
+readable. Most real-world parsers enforce this separation strictly.</p>
+<h2>Walk the visualization</h2>
+<p>Step through the input below and watch the lexer recognize each token.
+The highlighted character shows the current scan position.
+Each recognized token appears as a card with its type and value.</p>`,
+    vizType: 'lexer',
+    exId: 'ex-1',
+    exDesc: 'Implement a function that takes a &str and returns a Vec of (TokenType, &str) tuples. Start with keywords and identifiers only.',
+    starter: `#[derive(Debug)]
+enum TokenType {
+    Keyword,
+    Ident,
+    IntLit,
+    Punct,
+    Op,
+}
+
+fn lex(input: &str) -> Vec<(TokenType, &str)> {
+    // Your implementation here.
+    // Walk the input character by character.
+    // When you find a word, classify it: keyword or ident?
+    todo!()
+}
+
+fn main() {
+    let tokens = lex("fn main() { let x = 42; }");
+    for (ty, val) in &tokens {
+        println!("{:?}  {:?}", ty, val);
+    }
+}`,
+    errOutput: null,
+    okOutput: `   Compiling forja-run v0.1.0
+    Finished dev [unoptimized + debuginfo] target(s) in 0.45s
+     Running \`target/debug/forja-run\`
+Keyword  "fn"
+Ident    "main"
+Punct    "("
+Punct    ")"
+Punct    "{"
+Keyword  "let"
+Ident    "x"
+Op       "="
+IntLit   "42"
+Punct    ";"
+Punct    "}"`,
+    challenge: {
+      type: 'extension',
+      desc: 'Extend your lexer to handle string literals ("..."), comments (// ...), and float literals (3.14). Make it return source spans (byte offsets) alongside the token type.',
+      note: 'A span is (start, end) — the byte range in the original input.'
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// VISUALIZATIONS
+// ══════════════════════════════════════════════════════════════════════════
+
+// ── Ownership Viz ─────────────────────────────────────────────────────────
+const OV_STEPS = [
+  { hint: 'Initial state — nothing allocated yet', code: 'fn main() {' },
+  { hint: 'let s1 = String::from("hello");', code: 'let s1 = String::from("hello");' },
+  { hint: 'let s2 = s1; — ownership moves from s1 to s2', code: 'let s2 = s1;' },
+  { hint: 'println!("{}", s1); — compiler rejects this!', code: 'println!("{}", s1);  // ERROR' },
+  { hint: 'Fix: use s2 instead of s1', code: 'println!("{}", s2);  // ✓' },
+]
+let ovStep = 0
+
+function renderOwnershipViz() {
+  const step = ovStep
+  const showS1 = step >= 1
+  const showS2 = step >= 2
+  const s1Moved = step >= 2
+  const showError = step === 3
+  const showFix = step === 4
+  const heapActive = step >= 1
+
+  return `
+  <div class="ov-canvas">
+    <div class="mem-region">
+      <div class="mem-region-title">STACK</div>
+      ${showS1 ? `
+      <div class="var-box ${s1Moved?'moved':'alive'}" id="ov-s1">
+        <div class="var-name ${s1Moved?'moved':''}">s1: String</div>
+        <div class="var-fields">
+          <div class="var-field">ptr → heap</div>
+          <div class="var-field">len: 5</div>
+          <div class="var-field">cap: 5</div>
+        </div>
+        ${s1Moved?'<span class="moved-tag">MOVED</span>':''}
+      </div>` : ''}
+      ${showS2 ? `
+      <div class="var-box ${showFix?'active':'alive'}" id="ov-s2">
+        <div class="var-name">s2: String</div>
+        <div class="var-fields">
+          <div class="var-field">ptr → heap</div>
+          <div class="var-field">len: 5</div>
+          <div class="var-field">cap: 5</div>
+        </div>
+      </div>` : ''}
+    </div>
+
+    <div class="arrow-col">
+      ${showS1?`<div class="ov-arrow ${s1Moved?'moved':'alive'}">${s1Moved?'✕':'→'}</div>`:''}
+      ${showS2?`<div class="ov-arrow ${showFix?'active':'alive'}">→</div>`:''}
+    </div>
+
+    <div class="mem-region">
+      <div class="mem-region-title">HEAP</div>
+      ${heapActive?`
+      <div class="heap-box ${heapActive?'active':''}">
+        <div class="heap-title">0x7fff... — String data</div>
+        <div class="heap-bytes">
+          ${['h','e','l','l','o'].map(c=>`
+            <div class="heap-byte">${c}</div>`).join('')}
+        </div>
+      </div>`:
+      `<div style="color:var(--tm);font-size:12px;font-family:var(--f-mono);opacity:.4">(empty)</div>`}
+    </div>
+  </div>
+
+  ${showError ? `
+  <div class="ov-error-msg visible">
+error[E0382]: borrow of moved value: \`s1\`
+  --> src/main.rs:5:20
+   |
+3  |     let s2 = s1;
+   |              -- value moved here
+5  |     println!("{}", s1);
+   |                    ^^ value borrowed here after move</div>` : ''}
+
+  ${showFix ? `
+  <div style="font-family:var(--f-mono);font-size:11px;color:var(--ok);
+    background:#0d1f12;border:1px solid #1a3a20;border-radius:5px;
+    padding:8px 12px;margin-top:8px;">
+  ✓ s2 is the owner — println!("{}", s2) compiles fine</div>` : ''}`
+}
+
+// ── Memory Layout Viz ─────────────────────────────────────────────────────
+const MV_STEPS = [
+  { hint: 'Empty — no code running', code: '// before main()' },
+  { hint: 'fn main() — stack frame created', code: 'fn main() {' },
+  { hint: 'let n: i32 = 42 — 4 bytes on stack', code: '    let n: i32 = 42;' },
+  { hint: 'let flag: bool = true — 1 byte on stack', code: '    let flag: bool = true;' },
+  { hint: 'let s = String::from("hello") — stack + heap', code: '    let s = String::from("hello");' },
+  { hint: '} — frame destroyed, Drop runs, heap freed', code: '}  // everything drops' },
+]
+let mvStep = 0
+
+function renderMemoryViz() {
+  const step = mvStep
+  const showFrame = step >= 1
+  const showN = step >= 2
+  const showFlag = step >= 3
+  const showS = step >= 4
+  const dropped = step >= 5
+
+  return `
+  <div class="mv-canvas">
+    <div class="mv-region">
+      <div class="mv-region-title">STACK</div>
+      ${showFrame ? `
+      <div class="stack-frame ${dropped?'dropped':''}">
+        <div class="stack-frame-label">FRAME: main()</div>
+        <div class="stack-var ${showN&&!dropped?'visible':''}">
+          <span class="sv-name">n</span>
+          <span class="sv-type">i32</span>
+          <span class="sv-val">= 42</span>
+        </div>
+        <div class="stack-var ${showFlag&&!dropped?'visible':''}">
+          <span class="sv-name">flag</span>
+          <span class="sv-type">bool</span>
+          <span class="sv-val">= true</span>
+        </div>
+        <div class="stack-var ${showS&&!dropped?'visible':''}">
+          <span class="sv-name">s</span>
+          <span class="sv-type">String</span>
+          <span class="sv-ptr">ptr</span>
+          <span class="sv-val" style="font-size:10px;color:var(--info)">0x7fff…</span>
+        </div>
+      </div>` : `<div style="color:var(--tm);font-size:12px;font-family:var(--f-mono);opacity:.4">(empty)</div>`}
+    </div>
+
+    <div class="mv-arrow-col ${showS&&!dropped?'visible':''}">⟶</div>
+
+    <div class="mv-region">
+      <div class="mv-region-title">HEAP</div>
+      ${showS&&!dropped ? `
+      <div class="heap-obj visible">
+        <div class="heap-obj-title">String buffer — 5 bytes</div>
+        <div class="heap-chars">
+          ${['h','e','l','l','o'].map(c=>`<span class="heap-char">${c}</span>`).join('')}
+        </div>
+        <div style="font-family:var(--f-mono);font-size:9px;color:var(--tm);margin-top:6px">
+          len: 5 · cap: 5 · alloc: system</div>
+      </div>` :
+      step >= 5 ?
+      `<div style="font-family:var(--f-mono);font-size:11px;color:var(--err);opacity:.6">
+        ← freed by Drop</div>` :
+      `<div style="color:var(--tm);font-size:12px;font-family:var(--f-mono);opacity:.4">(empty)</div>`
+      }
+    </div>
+  </div>`
+}
+
+// ── Lexer Viz ─────────────────────────────────────────────────────────────
+const LEXER_INPUT = 'fn main() { let x = 42; }'
+const LEXER_TOKENS = [
+  { type:'kw',    label:'KEYWORD',   val:'fn',   end:2  },
+  { type:'ident', label:'IDENT',     val:'main', end:7  },
+  { type:'punct', label:'PUNCT',     val:'(',    end:8  },
+  { type:'punct', label:'PUNCT',     val:')',    end:9  },
+  { type:'punct', label:'PUNCT',     val:'{',    end:11 },
+  { type:'kw',    label:'KEYWORD',   val:'let',  end:15 },
+  { type:'ident', label:'IDENT',     val:'x',    end:17 },
+  { type:'op',    label:'OP',        val:'=',    end:19 },
+  { type:'lit',   label:'INT_LIT',   val:'42',   end:22 },
+  { type:'punct', label:'PUNCT',     val:';',    end:23 },
+  { type:'punct', label:'PUNCT',     val:'}',    end:25 },
+]
+let lvStep = 0
+
+function renderLexerViz() {
+  const tokensShown = LEXER_TOKENS.slice(0, lvStep)
+  const currentEnd = lvStep < LEXER_TOKENS.length ? LEXER_TOKENS[lvStep].end : LEXER_INPUT.length
+  const scannedEnd = lvStep > 0 ? LEXER_TOKENS[lvStep-1].end : 0
+
+  const inputHtml = LEXER_INPUT.split('').map((c, i) => {
+    let cls = ''
+    if (i < scannedEnd) cls = 'scanned'
+    else if (i < currentEnd && lvStep < LEXER_TOKENS.length) cls = 'current'
+    return `<span class="lv-char ${cls}">${c==' '?'&nbsp;':c}</span>`
+  }).join('')
+
+  const tokensHtml = tokensShown.map(t => `
+    <div class="token-card ${t.type}">
+      <span class="tc-val">${t.val}</span>
+      <span class="tc-type">${t.label}</span>
+    </div>`).join('')
+
+  return `
+  <div class="lv-input">${inputHtml}</div>
+  <div style="font-family:var(--f-mono);font-size:9px;color:var(--tm);letter-spacing:1px;
+    margin-bottom:8px">${lvStep===0?'WAITING TO SCAN':'TOKEN STREAM ('+(lvStep)+' recognized)'}</div>
+  <div class="lv-tokens">${tokensHtml || '<span style="color:var(--tm);font-size:12px;font-family:var(--f-mono)">—</span>'}</div>`
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// LAB RENDERER
+// ══════════════════════════════════════════════════════════════════════════
+let currentRunState = 'idle'
+
+function renderLab(labId) {
+  const lab = LABS[labId]
+  $('lab-crumb').textContent = `Rust › ${lab.title} › D1`
+  ovStep = 0; mvStep = 0; lvStep = 0; currentRunState = 'idle'
+
+  const vizMaxSteps = lab.vizType==='ownership' ? OV_STEPS.length :
+    lab.vizType==='memory' ? MV_STEPS.length : LEXER_TOKENS.length+1
+
+  const lines = lab.starter.split('\n').length
+  const gutterHtml = Array.from({length:lines},(_,i)=>`<div class="ln">${i+1}</div>`).join('')
+
+  $('lab-body').innerHTML = `
+    <div id="lab-inner" style="display:flex;height:100%;min-height:0">
+      <!-- Theory -->
+      <div class="theory-col">
+        <div class="theory-head">
+          <div class="concept-badge">${lab.badge}</div>
+          <div class="lab-title">${lab.title}</div>
+        </div>
+        <div class="theory-body">
+          <div class="prose">${lab.prose}</div>
+          ${lab.challenge ? `
+          <div class="challenge-block">
+            <div class="ch-header">
+              <span class="ch-star">★</span>
+              <span class="ch-title">Challenge — ${lab.challenge.type}</span>
+            </div>
+            <div class="ch-desc">${lab.challenge.desc}</div>
+            <div class="ch-note">${lab.challenge.note}</div>
+            <button class="ch-btn">Accept challenge</button>
+            <div style="clear:both"></div>
+          </div>` : ''}
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div class="right-col">
+        <!-- Visualization -->
+        <div class="viz-block">
+          <div class="viz-label">${lab.vizType === 'ownership' ? 'Ownership Graph' :
+            lab.vizType === 'memory' ? 'Memory Layout' : 'Lexer Trace'} — Interactive</div>
+          <div class="viz-body" id="viz-body"></div>
+          <div class="viz-controls">
+            <button class="viz-btn" id="viz-prev" onclick="vizPrev('${lab.vizType}')">← Prev</button>
+            <span class="viz-step-info" id="viz-info"></span>
+            <span class="viz-code-hint" id="viz-hint"></span>
+            <button class="viz-btn" id="viz-next" onclick="vizNext('${lab.vizType}')">Next →</button>
+          </div>
+        </div>
+
+        <!-- Editor -->
+        <div class="editor-section">
+          <div class="exercise-bar">
+            <div class="ex-label">
+              <div class="ex-id">${lab.exId}</div>
+              <div class="ex-desc">${lab.exDesc}</div>
+            </div>
+            <div class="ex-actions">
+              <button class="btn-reset" onclick="resetCode('${labId}')">Reset</button>
+              <button class="btn-run" id="run-btn" onclick="runCode('${labId}')">
+                <svg width="9" height="9" viewBox="0 0 9 9" fill="currentColor"><path d="M2 1.5l6 3-6 3V1.5z"/></svg>
+                Run
+              </button>
+            </div>
+          </div>
+          <div class="editor-wrap">
+            <div class="editor-gutter" id="gutter">${gutterHtml}</div>
+            <textarea class="code" id="code-editor" spellcheck="false" autocomplete="off"
+              autocorrect="off" autocapitalize="off"
+              onkeydown="codeKeydown(event,'${labId}')"
+              oninput="codeInput(event)">${lab.starter}</textarea>
+          </div>
+          <div class="output-panel">
+            <div class="output-tabs">
+              <button class="otab active">Output</button>
+              <button class="otab">Tests</button>
+              <div class="output-status" id="out-status"></div>
+            </div>
+            <div class="output-body" id="output-body">
+              <span class="out-idle">Press Ctrl+Enter or click Run to execute.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`
+
+  updateViz(lab.vizType)
+}
+
+function updateViz(type) {
+  const body = $('viz-body'); if (!body) return
+  const maxSteps = type==='ownership'?OV_STEPS.length:type==='memory'?MV_STEPS.length:LEXER_TOKENS.length+1
+  const step = type==='ownership'?ovStep:type==='memory'?mvStep:lvStep
+  const steps = type==='ownership'?OV_STEPS:type==='memory'?MV_STEPS:
+    [{hint:'Click Next to start scanning',code:'// input ready'},...LEXER_TOKENS.map((t,i)=>({hint:`Token ${i+1}: ${t.label}("${t.val}")`,code:t.val}))]
+
+  body.innerHTML = type==='ownership'?renderOwnershipViz():type==='memory'?renderMemoryViz():renderLexerViz()
+
+  const info = $('viz-info'), hint = $('viz-hint')
+  if (info) info.textContent = `Step ${step+1} / ${maxSteps}`
+  if (hint) hint.textContent = steps[step]?.hint || ''
+  const prev = $('viz-prev'), next = $('viz-next')
+  if (prev) prev.disabled = step === 0
+  if (next) next.disabled = step === maxSteps-1
+}
+
+function vizPrev(type) {
+  if (type==='ownership' && ovStep>0) { ovStep--; updateViz(type) }
+  if (type==='memory'    && mvStep>0) { mvStep--; updateViz(type) }
+  if (type==='lexer'     && lvStep>0) { lvStep--; updateViz(type) }
+}
+function vizNext(type) {
+  const max = type==='ownership'?OV_STEPS.length:type==='memory'?MV_STEPS.length:LEXER_TOKENS.length+1
+  if (type==='ownership' && ovStep<max-1) { ovStep++; updateViz(type) }
+  if (type==='memory'    && mvStep<max-1) { mvStep++; updateViz(type) }
+  if (type==='lexer'     && lvStep<max-1) { lvStep++; updateViz(type) }
+}
+
+// ── Code editor helpers ───────────────────────────────────────────────────
+function codeInput(e) {
+  const ta = e.target
+  const lines = ta.value.split('\n').length
+  const g = $('gutter'); if (!g) return
+  g.innerHTML = Array.from({length:lines},(_,i)=>`<div class="ln">${i+1}</div>`).join('')
+}
+function codeKeydown(e, labId) {
+  const ta = e.target
+  if (e.key==='Tab') {
+    e.preventDefault()
+    const s=ta.selectionStart,end=ta.selectionEnd
+    ta.value=ta.value.slice(0,s)+'    '+ta.value.slice(end)
+    ta.selectionStart=ta.selectionEnd=s+4
+    codeInput({target:ta})
+  }
+  if (e.key==='Enter' && e.ctrlKey) { e.preventDefault(); runCode(labId) }
+}
+function resetCode(labId) {
+  const ta = $('code-editor'); if (!ta) return
+  ta.value = LABS[labId].starter
+  codeInput({target:ta})
+  setOutput('idle','')
+}
+
+// ── Run simulation ────────────────────────────────────────────────────────
+async function runCode(labId) {
+  const lab = LABS[labId]
+  const btn = $('run-btn')
+  if (!btn) return
+  btn.disabled = true
+  btn.innerHTML = 'Running…'
+  setOutput('running', '')
+
+  await delay(400)
+  setOutput('running','   Compiling forja-run v0.1.0')
+  await delay(600)
+
+  const code = ($('code-editor')||{}).value || lab.starter
+  const hasClone = code.includes('.clone()')
+  const hasBadS1 = code.includes('println!("{}", s1)') && code.includes('let s2 = s1')
+    && !code.includes('let s2 = &s1') && !code.includes('let s2 = s1.clone()')
+
+  if (lab.errOutput && hasBadS1 && !hasClone) {
+    await delay(200)
+    setOutput('error', lab.errOutput)
+  } else {
+    await delay(300)
+    setOutput('ok', lab.okOutput)
+  }
+
+  btn.disabled = false
+  btn.innerHTML = '<svg width="9" height="9" viewBox="0 0 9 9" fill="currentColor"><path d="M2 1.5l6 3-6 3V1.5z"/></svg> Run'
+}
+
+function setOutput(state, text) {
+  const body = $('output-body'), status = $('out-status'); if (!body) return
+  currentRunState = state
+  if (state==='idle') {
+    body.innerHTML = '<span class="out-idle">Press Ctrl+Enter or click Run to execute.</span>'
+    if(status) status.innerHTML = ''
+    return
+  }
+  if (state==='running') {
+    if(status) status.innerHTML = '<div class="dot running"></div><span style="color:var(--warn)">Running</span>'
+    body.innerHTML = `<span class="out-info">${escHtml(text)}</span>`
+    return
+  }
+  if (state==='ok') {
+    if(status) status.innerHTML = '<div class="dot ok"></div><span style="color:var(--ok)">Done</span>'
+    const lines = text.split('\n')
+    body.innerHTML = lines.map(l => {
+      if (l.startsWith('   Compiling')||l.startsWith('    Finished')||l.startsWith('     Running'))
+        return `<span class="out-info">${escHtml(l)}</span>`
+      return `<span class="out-main">${escHtml(l)}</span>`
+    }).join('\n')
+    return
+  }
+  if (state==='error') {
+    if(status) status.innerHTML = '<div class="dot error"></div><span style="color:var(--err)">Error</span>'
+    body.innerHTML = colorizeRustError(text)
+    return
+  }
+}
+
+function colorizeRustError(text) {
+  return text.split('\n').map(line => {
+    if (line.includes('error[E')) return `<span class="out-err">${escHtml(line)}</span>`
+    if (line.includes(' --> '))   return `<span style="color:#3d4a60">${escHtml(line)}</span>`
+    if (line.includes('error:'))  return `<span class="out-err">${escHtml(line)}</span>`
+    if (line.includes('Compiling')) return `<span class="out-info">${escHtml(line)}</span>`
+    if (/^\d+\s+\|/.test(line))  return `<span style="color:var(--tm)">${escHtml(line)}</span>`
+    if (line.trim().startsWith('|') && (line.includes('^^')||line.includes('--')))
+      return `<span class="out-err">${escHtml(line)}</span>`
+    if (line.startsWith('For more'))
+      return `<span style="color:var(--info)">${escHtml(line)}</span>`
+    return `<span style="color:#3d4a60">${escHtml(line)}</span>`
+  }).join('\n')
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+}
+function delay(ms) { return new Promise(r=>setTimeout(r,ms)) }
+
+// ══════════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════════════════════
+function openLab(labId) {
+  state.view='lab'; state.labId=labId
+  $('tree-view').classList.add('hidden')
+  $('lab-view').classList.remove('hidden')
+
+  // update topbar
+  $('pillar-tabs').querySelectorAll('.ptab').forEach(b => {
+    b.classList.toggle('active', b.dataset.pillar === LABS[labId].pillar)
+  })
+
+  renderLab(labId)
+}
+
+function openTree() {
+  state.view='tree'
+  $('lab-view').classList.add('hidden')
+  $('tree-view').classList.remove('hidden')
+  hideTooltip()
+  renderTree()
+
+  // restore pillar tabs
+  $('pillar-tabs').querySelectorAll('.ptab').forEach(b => {
+    b.classList.toggle('active', b.dataset.pillar===state.pillar)
+  })
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════════════
+function init() {
+  // Pillar tabs
+  const pillars = ['rust','compilers','os']
+  const tabsEl = $('pillar-tabs')
+  pillars.forEach(p => {
+    const btn = document.createElement('button')
+    btn.className = `ptab ${p}${p==='rust'?' active':''}`
+    btn.dataset.pillar = p
+    btn.textContent = p==='os'?'OS':p.charAt(0).toUpperCase()+p.slice(1)
+    btn.addEventListener('click', () => {
+      if (state.view==='lab') return
+      state.pillar = p
+      tabsEl.querySelectorAll('.ptab').forEach(b=>b.classList.toggle('active',b===btn))
+      renderTree()
+    })
+    tabsEl.appendChild(btn)
+  })
+
+  // Back button
+  $('back-btn').addEventListener('click', openTree)
+
+  // Initial render
+  renderTree()
+}
+
+init()
+</script>
+</body>
+</html>

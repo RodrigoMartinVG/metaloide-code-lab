@@ -1,0 +1,1669 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forja</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400;1,14..32,600;1,14..32,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:     #0f1117;
+  --bg-s:   #161b22;
+  --bg-e:   #1c2128;
+  --b:      #30363d;
+  --bs:     #21262d;
+  --t1:     #e6edf3;
+  --t2:     #8b949e;
+  --tm:     #484f58;
+  --accent: #e05c1a;
+  --ok:     #3fb950;
+  --err:    #f85149;
+  --warn:   #d29922;
+  --rust:   #e05c1a;
+  --comp:   #58a6ff;
+  --os:     #bc8cff;
+  --f:      'Inter', system-ui, sans-serif;
+  --fm:     'JetBrains Mono', 'Cascadia Code', monospace;
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; background:var(--bg); color:var(--t1); font-family:var(--f); font-size:14px; line-height:1.6; -webkit-font-smoothing:antialiased; overflow:hidden; }
+button { font-family:inherit; cursor:pointer; }
+.hidden { display:none !important; }
+
+/* ── Topbar ── */
+#topbar {
+  position:fixed; top:0; left:0; right:0; height:48px; z-index:200;
+  background:var(--bg-s); border-bottom:1px solid var(--bs);
+  display:flex; align-items:center; padding:0 20px;
+}
+.t-logo { display:flex; align-items:center; gap:8px; flex-shrink:0; cursor:pointer; }
+.t-logo-mark {
+  width:22px; height:22px; background:var(--accent); border-radius:5px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--fm); font-size:10px; font-weight:700; color:#fff;
+}
+.t-logo-word { font-family:var(--fm); font-size:13px; font-weight:600; color:var(--t1); letter-spacing:.5px; }
+.t-sep { width:1px; height:18px; background:var(--bs); margin:0 14px; flex-shrink:0; }
+.t-back {
+  background:none; border:none; color:var(--t2); font-size:12px; font-weight:500;
+  padding:4px 8px; border-radius:5px; display:flex; align-items:center; gap:5px;
+  transition:color .12s, background .12s;
+}
+.t-back:hover { color:var(--t1); background:var(--bg-e); }
+.t-crumb { display:flex; align-items:center; gap:5px; font-size:12px; }
+.t-crumb-seg { color:var(--t2); }
+.t-crumb-seg.hi { color:var(--t1); font-weight:500; }
+.t-crumb-div { color:var(--tm); }
+.t-spacer { flex:1; }
+.t-step-nav { display:flex; align-items:center; gap:4px; }
+.t-step-lbl { font-family:var(--fm); font-size:10px; color:var(--tm); padding:0 10px; min-width:88px; text-align:center; }
+.t-nav-btn {
+  background:none; border:1px solid var(--bs); color:var(--t2); font-size:11px; font-weight:500;
+  padding:3px 10px; border-radius:4px; transition:color .1s, border-color .1s, background .1s;
+}
+.t-nav-btn:hover { color:var(--t1); border-color:var(--b); background:var(--bg-e); }
+.t-run-btn {
+  background:var(--accent); border:none; color:#fff; font-size:12px; font-weight:600;
+  padding:5px 16px; border-radius:5px; margin-left:8px; letter-spacing:.2px;
+  transition:opacity .12s;
+}
+.t-run-btn:hover { opacity:.85; }
+.t-demo { font-family:var(--fm); font-size:9px; letter-spacing:1.5px; color:var(--tm); border:1px solid var(--bs); padding:2px 7px; border-radius:3px; }
+
+/* topbar states */
+.tbs { display:none; align-items:center; gap:0; flex:1; }
+.tbs.active { display:flex; }
+
+/* ── View system ── */
+.view {
+  position:fixed; top:48px; left:0; right:0; bottom:0;
+  opacity:0; pointer-events:none; transition:opacity .18s;
+}
+.view.active { opacity:1; pointer-events:auto; }
+
+/* ══════════ VIEW 1 — EL BOSQUE ══════════ */
+#v-bosque { overflow-y:auto; }
+.bosque-inner { max-width:920px; margin:0 auto; padding:52px 40px 80px; }
+
+.bosque-title {
+  font-size:80px; font-weight:700; font-style:italic;
+  color:var(--t1); line-height:1; letter-spacing:-3px; margin-bottom:18px;
+}
+.bosque-phil {
+  font-size:13.5px; color:var(--t2); max-width:560px; line-height:1.8; margin-bottom:14px;
+}
+.bosque-phil em { color:var(--t1); font-style:normal; font-weight:500; }
+.bosque-note { font-size:12px; color:var(--tm); margin-bottom:52px; }
+
+/* Stats strip */
+.bosque-stats {
+  display:flex; border:1px solid var(--bs); border-radius:8px; overflow:hidden; margin-bottom:52px;
+}
+.bstat { flex:1; padding:20px 24px; border-right:1px solid var(--bs); }
+.bstat:last-child { border-right:none; }
+.bstat-n {
+  font-family:var(--fm); font-size:30px; font-weight:600; color:var(--t1); line-height:1; margin-bottom:3px;
+}
+.bstat-n .denom { font-size:16px; color:var(--tm); font-weight:400; }
+.bstat-l { font-size:11px; color:var(--tm); letter-spacing:.2px; }
+.bstat.hl .bstat-n { color:var(--accent); }
+
+/* Three tracks */
+.bosque-sec { font-family:var(--fm); font-size:10px; font-weight:600; letter-spacing:1.5px; color:var(--tm); text-transform:uppercase; margin-bottom:16px; }
+.bosque-tracks { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:52px; }
+.tc {
+  border:1px solid var(--bs); border-radius:8px; padding:24px 22px;
+  cursor:pointer; transition:border-color .15s, background .15s; position:relative; overflow:hidden;
+}
+.tc:hover { border-color:var(--b); background:var(--bg-s); }
+.tc::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+.tc.rust::after { background:var(--rust); }
+.tc.comp::after { background:var(--comp); }
+.tc.os::after   { background:var(--os); }
+.tc-id { font-family:var(--fm); font-size:9px; letter-spacing:1.2px; color:var(--tm); margin-bottom:5px; }
+.tc-role {
+  display:inline-block; font-family:var(--fm); font-size:8px; font-weight:700;
+  letter-spacing:1.8px; padding:2px 7px; border-radius:3px; margin-bottom:12px;
+}
+.tc-role.suelo { background:rgba(224,92,26,.15); color:var(--rust); border:1px solid rgba(224,92,26,.25); }
+.tc-role.dest   { background:var(--bg-e); color:var(--t2); border:1px solid var(--bs); }
+.tc-name { font-size:18px; font-weight:700; color:var(--t1); margin-bottom:6px; }
+.tc-desc { font-size:12px; color:var(--tm); line-height:1.65; margin-bottom:18px; }
+.tc-status { font-family:var(--fm); font-size:10px; font-weight:600; letter-spacing:.5px; margin-bottom:8px; }
+.tc-status.curso { color:var(--accent); }
+.tc-status.accs  { color:var(--ok); }
+.tc-bar { height:3px; background:var(--bs); border-radius:2px; margin-bottom:7px; }
+.tc-fill { height:100%; border-radius:2px; }
+.tc-fill.rust { background:var(--rust); }
+.tc-fill.comp { background:var(--comp); }
+.tc-fill.os   { background:var(--os); }
+.tc-prog { font-size:11px; color:var(--tm); }
+
+/* CTAs */
+.bosque-ctas { display:flex; gap:12px; }
+.b-cta {
+  background:none; border:1px solid var(--bs); color:var(--t2); font-size:13px; font-weight:500;
+  padding:9px 20px; border-radius:6px; display:flex; align-items:center; gap:8px;
+  transition:color .12s, border-color .12s, background .12s;
+}
+.b-cta:hover { color:var(--t1); border-color:var(--b); background:var(--bg-s); }
+.b-cta.pri { border-color:var(--accent); color:var(--accent); }
+.b-cta.pri:hover { background:rgba(224,92,26,.07); }
+
+/* ══════════ VIEW 2 — EL MAPA ══════════ */
+#v-mapa { overflow-y:auto; }
+.mapa-inner { max-width:1020px; margin:0 auto; padding:40px; }
+.mapa-h { margin-bottom:28px; }
+.mapa-title { font-size:38px; font-weight:700; font-style:italic; color:var(--t1); letter-spacing:-1.5px; margin-bottom:6px; }
+.mapa-sub { font-size:12px; color:var(--tm); }
+.mapa-legend { display:flex; gap:22px; margin-bottom:20px; }
+.leg { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--t2); }
+.leg-dot { width:10px; height:10px; border-radius:50%; }
+.leg-dot.done { background:var(--rust); }
+.leg-dot.act  { background:var(--rust); box-shadow:0 0 0 3px rgba(224,92,26,.3); }
+.leg-dot.avail { background:transparent; border:2px solid rgba(224,92,26,.5); }
+.leg-dot.lock { background:var(--bs); }
+.leg-line { width:24px; height:2px; background:var(--tm); }
+.leg-dash { width:24px; height:0; border-top:2px dashed var(--accent); }
+
+.map-wrap {
+  background:var(--bg-s); border:1px solid var(--bs); border-radius:8px;
+  padding:28px 20px 24px; margin-bottom:32px; overflow-x:auto;
+}
+
+/* Retos */
+.retos-sec { font-family:var(--fm); font-size:10px; font-weight:600; letter-spacing:1.5px; color:var(--tm); text-transform:uppercase; margin-bottom:16px; }
+.retos-sub { font-size:12px; color:var(--tm); margin-bottom:20px; margin-top:-10px; }
+.retos-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.reto {
+  border:1px solid var(--bs); border-radius:7px; padding:18px 18px 16px;
+  cursor:pointer; transition:border-color .14s, background .14s;
+}
+.reto:hover { border-color:var(--b); background:var(--bg-s); }
+.reto-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+.reto-type { font-family:var(--fm); font-size:9px; font-weight:700; letter-spacing:1.5px; }
+.reto-type.proj { color:var(--rust); }
+.reto-type.lab  { color:var(--os); }
+.reto-type.intg { color:var(--comp); }
+.reto-time { font-size:11px; color:var(--tm); }
+.reto-name { font-size:14px; font-weight:600; color:var(--t1); margin-bottom:5px; }
+.reto-desc { font-size:12px; color:var(--tm); line-height:1.6; margin-bottom:10px; }
+.reto-meta { font-family:var(--fm); font-size:10px; color:var(--tm); display:flex; gap:8px; }
+.reto-meta span { opacity:.7; }
+
+/* ══════════ VIEW 3 — TRACK DETAIL ══════════ */
+#v-track { display:flex; }
+.td-sidebar {
+  width:220px; flex-shrink:0; border-right:1px solid var(--bs);
+  overflow-y:auto; display:flex; flex-direction:column;
+}
+.tds-head { padding:20px 18px 16px; border-bottom:1px solid var(--bs); }
+.tds-track { font-family:var(--fm); font-size:9px; color:var(--rust); letter-spacing:1.2px; margin-bottom:2px; }
+.tds-name { font-size:16px; font-weight:700; color:var(--t1); margin-bottom:2px; }
+.tds-stats { font-size:11px; color:var(--tm); }
+.tds-prog-bar { height:2px; background:var(--bs); border-radius:1px; margin-top:10px; }
+.tds-prog-fill { width:49%; height:100%; background:var(--rust); border-radius:1px; }
+.ch-item {
+  padding:10px 18px; cursor:pointer; border-left:2px solid transparent;
+  border-bottom:1px solid var(--bs); transition:background .1s;
+}
+.ch-item:hover { background:var(--bg-e); }
+.ch-item.act { border-left-color:var(--rust); background:var(--bg-e); }
+.ch-num { font-family:var(--fm); font-size:9px; color:var(--tm); margin-bottom:1px; }
+.ch-name { font-size:12px; font-weight:500; }
+.ch-name.done { color:var(--ok); }
+.ch-name.act  { color:var(--t1); }
+.ch-name.next { color:var(--t2); }
+.ch-name.lock { color:var(--tm); }
+.ch-tag {
+  float:right; font-family:var(--fm); font-size:8px; font-weight:700; letter-spacing:.5px; margin-top:1px;
+}
+.ch-tag.done  { color:var(--ok); }
+.ch-tag.curso { color:var(--accent); }
+.ch-bar { height:2px; background:var(--bs); border-radius:1px; margin-top:6px; overflow:hidden; }
+.ch-bar-fill { height:100%; background:var(--rust); border-radius:1px; }
+
+.td-main { flex:1; overflow-y:auto; padding:28px 32px; }
+.tdm-label { font-family:var(--fm); font-size:9px; color:var(--tm); letter-spacing:.8px; margin-bottom:6px; }
+.tdm-title { font-size:22px; font-weight:700; color:var(--t1); margin-bottom:4px; }
+.tdm-stats { font-size:12px; color:var(--tm); margin-bottom:24px; }
+.tdm-divider { height:1px; background:var(--bs); margin-bottom:0; }
+
+.unit-row {
+  display:flex; align-items:center; padding:13px 0; border-bottom:1px solid var(--bs); gap:12px; cursor:pointer;
+}
+.unit-row:hover .u-name { color:var(--t1); }
+.u-num { font-family:var(--fm); font-size:10px; color:var(--tm); width:22px; flex-shrink:0; }
+.u-name { font-size:13px; font-weight:500; color:var(--t2); flex:1; transition:color .1s; }
+.u-name.done { color:var(--tm); }
+.u-name.act  { color:var(--t1); }
+.u-badges { display:flex; gap:4px; }
+.u-badge {
+  font-family:var(--fm); font-size:8px; font-weight:700; letter-spacing:.8px;
+  padding:2px 6px; border-radius:3px; border:1px solid var(--bs); color:var(--tm);
+}
+.u-badge.lab  { color:rgba(224,92,26,.9); border-color:rgba(224,92,26,.3); }
+.u-badge.done { color:var(--ok); border-color:rgba(63,185,80,.3); }
+.u-badge.lock { opacity:.4; }
+.u-time { font-size:11px; color:var(--tm); flex-shrink:0; }
+.u-dot { width:7px; height:7px; border-radius:50%; background:var(--bs); flex-shrink:0; }
+.u-dot.done { background:var(--ok); }
+.u-dot.act  { background:var(--accent); box-shadow:0 0 0 2px rgba(224,92,26,.25); }
+
+.td-right {
+  width:270px; flex-shrink:0; border-left:1px solid var(--bs); overflow-y:auto; padding:20px 18px;
+}
+.tdr-sec { margin-bottom:24px; }
+.tdr-label { font-family:var(--fm); font-size:9px; font-weight:700; letter-spacing:1.2px; color:var(--tm); text-transform:uppercase; margin-bottom:12px; }
+.retomar {
+  background:var(--bg-e); border:1px solid var(--bs); border-left:3px solid var(--rust);
+  border-radius:6px; padding:14px; cursor:pointer; transition:border-color .13s;
+}
+.retomar:hover { border-color:var(--b); }
+.ret-badge {
+  font-family:var(--fm); font-size:8px; font-weight:700; letter-spacing:1px;
+  background:rgba(224,92,26,.12); color:var(--rust); padding:2px 6px; border-radius:3px; margin-bottom:8px; display:inline-block;
+}
+.ret-name { font-size:13px; font-weight:600; color:var(--t1); margin-bottom:3px; }
+.ret-loc  { font-family:var(--fm); font-size:10px; color:var(--tm); margin-bottom:6px; }
+.ret-step { font-size:11px; color:var(--t2); }
+.ret-btn {
+  width:100%; margin-top:12px; background:var(--rust); border:none; color:#fff;
+  font-size:12px; font-weight:600; padding:7px; border-radius:5px; transition:opacity .12s;
+}
+.ret-btn:hover { opacity:.84; }
+
+.portal-entry { padding:10px 0; border-bottom:1px solid var(--bs); }
+.portal-entry:last-child { border-bottom:none; }
+.pe-track { font-family:var(--fm); font-size:9px; font-weight:600; letter-spacing:.8px; margin-bottom:3px; }
+.pe-track.comp { color:var(--comp); }
+.pe-track.os   { color:var(--os); }
+.pe-desc { font-size:12px; color:var(--t2); line-height:1.55; margin-bottom:3px; }
+.pe-path { font-family:var(--fm); font-size:10px; color:var(--tm); }
+
+.anchor-entry { padding:10px 0; border-bottom:1px solid var(--bs); }
+.anchor-entry:last-child { border-bottom:none; }
+.ae-from { font-family:var(--fm); font-size:9px; color:var(--tm); margin-bottom:3px; }
+.ae-desc { font-size:12px; color:var(--t2); line-height:1.55; margin-bottom:3px; }
+.ae-path { font-family:var(--fm); font-size:10px; color:var(--tm); }
+
+/* ══════════ VIEW 4 — LAB ══════════ */
+#v-lab { display:flex; flex-direction:column; }
+.lab-body { flex:1; display:flex; min-height:0; }
+
+/* Lab sidebar */
+.lab-nav {
+  width:194px; flex-shrink:0; border-right:1px solid var(--bs);
+  overflow-y:auto; display:flex; flex-direction:column;
+}
+.lab-nav-head {
+  padding:12px 14px; border-bottom:1px solid var(--bs); flex-shrink:0;
+}
+.lnh-track { font-family:var(--fm); font-size:9px; color:var(--rust); letter-spacing:1px; margin-bottom:2px; }
+.lnh-course { font-size:12px; font-weight:600; color:var(--t1); }
+.lab-nav-unit {
+  padding:8px 14px; cursor:pointer; border-left:2px solid transparent;
+  transition:background .1s; border-bottom:1px solid var(--bs);
+}
+.lab-nav-unit:hover { background:var(--bg-s); }
+.lab-nav-unit.act { border-left-color:var(--rust); background:var(--bg-e); }
+.lnu-num { font-family:var(--fm); font-size:9px; color:var(--tm); }
+.lnu-name { font-size:11px; color:var(--t2); margin-top:1px; }
+.lnu-name.act { color:var(--t1); font-weight:500; }
+
+/* Lab center */
+.lab-center { flex:1; display:flex; flex-direction:column; min-width:0; }
+.lab-title-bar { padding:18px 26px 14px; border-bottom:1px solid var(--bs); flex-shrink:0; }
+.lab-tag { font-family:var(--fm); font-size:9px; font-weight:700; letter-spacing:1.5px; color:var(--rust); margin-bottom:7px; }
+.lab-title { font-size:26px; font-weight:700; color:var(--t1); line-height:1.15; }
+.lab-title em { font-style:italic; color:var(--t2); font-weight:400; }
+
+.step-bar {
+  height:38px; background:var(--bg-s); border-bottom:1px solid var(--bs);
+  display:flex; align-items:center; padding:0 26px; gap:6px; flex-shrink:0;
+}
+.sdot { width:6px; height:6px; border-radius:50%; background:var(--bs); flex-shrink:0; }
+.sdot.done { background:var(--rust); }
+.sdot.act  { background:var(--rust); box-shadow:0 0 0 2px rgba(224,92,26,.3); }
+.step-txt { font-family:var(--fm); font-size:10px; color:var(--tm); flex:1; text-align:center; }
+
+.lab-content-row { flex:1; display:flex; min-height:0; }
+.lab-editor-col { flex:1; display:flex; flex-direction:column; min-width:0; border-right:1px solid var(--bs); }
+
+.lab-step-prose {
+  padding:14px 24px 10px; border-bottom:1px solid var(--bs); flex-shrink:0;
+  max-height:90px; overflow-y:auto;
+}
+.lab-step-prose p { font-size:12.5px; color:var(--t2); line-height:1.75; }
+.lab-step-prose code { font-family:var(--fm); font-size:11px; color:var(--t1); background:var(--bg-e); padding:1px 5px; border-radius:3px; }
+
+/* Code editor */
+.code-editor { flex:1; min-height:0; overflow-y:auto; background:var(--bg); font-family:var(--fm); font-size:12.5px; line-height:1.8; padding:14px 0; }
+.cl { display:flex; }
+.cl-n { width:44px; padding-right:16px; text-align:right; color:var(--tm); user-select:none; font-size:11px; flex-shrink:0; }
+.cl-c { flex:1; padding-right:20px; white-space:pre; }
+.cl.err-line .cl-n { color:var(--err); }
+.cl.err-line .cl-c { background:rgba(248,81,73,.06); }
+/* syntax */
+.kw  { color:#ff7b72; }
+.fn  { color:#d2a8ff; }
+.mac { color:#ffa657; }
+.str { color:#a5d6ff; }
+.var { color:var(--t1); }
+.ty  { color:#ffa657; }
+.cm  { color:var(--tm); font-style:italic; }
+.sq  { text-decoration:underline wavy var(--err); }
+
+/* Error explain */
+.err-explain { display:none; flex-shrink:0; border-top:1px solid var(--bs); }
+.err-explain.show { display:block; }
+.ee-inner { padding:12px 24px 14px; border-left:3px solid var(--err); background:rgba(248,81,73,.04); }
+.ee-hd { font-family:var(--fm); font-size:9px; font-weight:700; letter-spacing:1px; color:var(--err); margin-bottom:7px; }
+.ee-p { font-size:12px; color:var(--t2); line-height:1.7; margin-bottom:6px; }
+.ee-p:last-child { margin-bottom:0; }
+.ee-p code { font-family:var(--fm); font-size:11px; color:var(--t1); background:var(--bg-e); padding:1px 4px; border-radius:3px; }
+.ee-suggest {
+  display:flex; align-items:center; gap:10px; margin-top:9px; padding:8px 12px;
+  background:var(--bg-e); border-radius:5px;
+}
+.ee-sl { font-family:var(--fm); font-size:8px; font-weight:700; letter-spacing:1px; color:var(--ok); }
+.ee-suggest code { font-family:var(--fm); font-size:12px; color:var(--t1); }
+
+/* Output panel */
+.output-panel { height:120px; border-top:1px solid var(--bs); flex-shrink:0; display:flex; flex-direction:column; }
+.op-bar {
+  height:28px; background:var(--bg-s); border-bottom:1px solid var(--bs);
+  display:flex; align-items:center; padding:0 14px; gap:14px; flex-shrink:0;
+}
+.op-tab { font-family:var(--fm); font-size:10px; color:var(--tm); cursor:pointer; padding-bottom:1px; }
+.op-tab.act { color:var(--t1); border-bottom:2px solid var(--accent); }
+.op-body { flex:1; overflow-y:auto; padding:7px 14px; font-family:var(--fm); font-size:11px; line-height:1.75; }
+.oc { color:var(--err); }
+.oc .loc { color:var(--t2); }
+.oc .ref { color:var(--warn); }
+.oc .ok  { color:var(--ok); }
+.oc .dim { color:var(--tm); }
+
+/* Right panel */
+.lab-right { width:290px; flex-shrink:0; display:flex; flex-direction:column; overflow:hidden; }
+.lr-pane { border-bottom:1px solid var(--bs); display:flex; flex-direction:column; }
+.lr-pane.mem { flex:1; min-height:0; overflow-y:auto; }
+.lr-pane.portals { flex-shrink:0; }
+.lr-pane.tests { height:96px; flex-shrink:0; }
+.lr-head {
+  height:30px; background:var(--bg-s); border-bottom:1px solid var(--bs);
+  padding:0 14px; display:flex; align-items:center;
+  font-family:var(--fm); font-size:9px; font-weight:700; letter-spacing:1.2px; color:var(--tm);
+  flex-shrink:0;
+}
+
+/* Memory visualization */
+.mem-viz { padding:14px; display:flex; flex-direction:column; gap:10px; }
+.mem-section-label { font-family:var(--fm); font-size:9px; color:var(--tm); letter-spacing:.8px; margin-bottom:4px; }
+.mem-row { display:flex; gap:10px; align-items:flex-start; }
+.stack-frame {
+  flex:1; border:1px solid var(--bs); border-radius:5px; overflow:hidden; min-width:0;
+}
+.sf-title {
+  padding:5px 10px; background:var(--bg-e); border-bottom:1px solid var(--bs);
+  display:flex; justify-content:space-between; align-items:center;
+  font-family:var(--fm); font-size:9px; color:var(--tm); letter-spacing:.3px;
+}
+.sf-badge { font-family:var(--fm); font-size:8px; font-weight:700; letter-spacing:.5px; padding:1px 5px; border-radius:2px; }
+.sf-badge.moved { background:rgba(248,81,73,.15); color:var(--err); }
+.sf-badge.owner { background:rgba(63,185,80,.12); color:var(--ok); }
+.sf-field { display:flex; align-items:center; padding:3px 10px; border-bottom:1px solid rgba(33,38,45,.8); }
+.sf-field:last-child { border-bottom:none; }
+.sf-k { font-family:var(--fm); font-size:10px; color:var(--tm); width:28px; flex-shrink:0; }
+.sf-v { font-family:var(--fm); font-size:10px; color:var(--t1); }
+.sf-v.cross { color:var(--err); text-decoration:line-through; opacity:.7; }
+.sf-v.ptr { color:var(--comp); cursor:default; }
+
+.heap-block { width:110px; flex-shrink:0; border:1px solid var(--bs); border-radius:5px; overflow:hidden; }
+.heap-block.active-owner { border-color:rgba(63,185,80,.35); }
+.hb-title { padding:5px 10px; background:var(--bg-e); border-bottom:1px solid var(--bs); font-family:var(--fm); font-size:9px; color:var(--tm); }
+.hb-bytes { display:flex; flex-wrap:wrap; padding:8px 8px 4px; gap:3px; }
+.hb-byte {
+  width:18px; height:18px; background:var(--bg-e); border:1px solid var(--bs);
+  border-radius:2px; display:flex; align-items:center; justify-content:center;
+  font-family:var(--fm); font-size:9px; color:var(--t1);
+}
+.hb-byte.inactive { opacity:.25; }
+.hb-meta { padding:3px 8px 7px; font-family:var(--fm); font-size:9px; color:var(--tm); }
+
+/* Portal cards in lab right */
+.lab-portal {
+  padding:11px 14px; border-bottom:1px solid var(--bs); cursor:pointer; transition:background .1s;
+}
+.lab-portal:last-child { border-bottom:none; }
+.lab-portal:hover { background:var(--bg-e); }
+.lp-track { font-family:var(--fm); font-size:9px; font-weight:700; letter-spacing:.8px; margin-bottom:3px; }
+.lp-track.os   { color:var(--os); }
+.lp-track.comp { color:var(--comp); }
+.lp-desc { font-size:11px; color:var(--t2); line-height:1.55; margin-bottom:3px; }
+.lp-path { font-family:var(--fm); font-size:9px; color:var(--tm); }
+
+/* Test rows */
+.test-row { display:flex; align-items:center; padding:7px 14px; border-bottom:1px solid var(--bs); gap:8px; }
+.test-row:last-child { border-bottom:none; }
+.test-ic { width:14px; height:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.test-name { font-family:var(--fm); font-size:10px; color:var(--t2); flex:1; }
+.test-st { font-family:var(--fm); font-size:9px; font-weight:700; letter-spacing:.5px; }
+.test-st.fail { color:var(--err); }
+.test-st.pend { color:var(--tm); }
+.test-st.pass { color:var(--ok); }
+
+/* ── Scrollbars ── */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--bs); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--b); }
+
+/* ══════════ CUADERNO DE CAMPO ══════════ */
+#v-cuaderno { overflow-y:auto; background:#f8f4ef; padding-bottom:34px; }
+.cuaderno-inner { max-width:680px; margin:0 auto; padding:44px 40px 60px; }
+
+/* header */
+.cn-chapter { font-family:var(--fm); font-size:9px; color:#9a9590; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:14px; }
+.cn-title { font-size:56px; font-weight:700; color:#1a1a1a; line-height:1.05; letter-spacing:-2.5px; margin-bottom:12px; }
+.cn-title em { color:var(--accent); font-style:italic; font-weight:400; }
+.cn-lede { font-size:15px; color:#5a5550; line-height:1.85; margin-bottom:22px; max-width:520px; }
+.cn-meta { display:flex; border-top:1px solid #d8cfc4; border-bottom:1px solid #d8cfc4; padding:10px 0; margin-bottom:44px; flex-wrap:wrap; gap:0; }
+.cn-mi { font-family:var(--fm); font-size:9px; color:#9a9590; letter-spacing:.8px; padding-right:16px; margin-right:16px; border-right:1px solid #d8cfc4; white-space:nowrap; }
+.cn-mi:last-child { border-right:none; }
+.cn-mi b { color:#1a1a1a; font-weight:600; }
+
+/* sections */
+.cn-sl { font-family:var(--fm); font-size:9px; color:#9a9590; letter-spacing:1px; margin-bottom:7px; }
+.cn-st { font-size:28px; font-weight:700; color:#1a1a1a; line-height:1.15; margin-bottom:18px; letter-spacing:-.5px; }
+.cn-st em { color:var(--accent); font-style:italic; font-weight:400; }
+.cn-sec { margin-bottom:48px; }
+.cn-p { font-size:14.5px; color:#1a1a1a; line-height:1.9; margin-bottom:18px; }
+.cn-p code { font-family:var(--fm); font-size:13px; color:var(--accent); background:rgba(224,92,26,.09); padding:1px 5px; border-radius:3px; }
+.cn-p strong { font-weight:600; }
+.cn-p em { font-style:italic; }
+
+/* inline code block */
+.cn-cw { background:#1c2128; border-radius:6px; overflow:hidden; margin:20px 0 6px; }
+.cn-ch { display:flex; justify-content:space-between; align-items:center; padding:7px 14px; background:#161b22; border-bottom:1px solid #21262d; }
+.cn-cfn { font-family:var(--fm); font-size:10px; color:#484f58; }
+.cn-cbtn { background:none; border:1px solid #30363d; color:#8b949e; font-size:10px; font-weight:600; letter-spacing:.5px; padding:3px 10px; border-radius:3px; font-family:var(--fm); transition:color .1s, border-color .1s, background .1s; }
+.cn-cbtn:hover { color:var(--accent); border-color:rgba(224,92,26,.5); background:rgba(224,92,26,.06); }
+.cn-cbody { padding:14px 18px; font-family:var(--fm); font-size:12.5px; line-height:1.8; color:#e6edf3; white-space:pre; tab-size:4; overflow-x:auto; }
+
+/* step nav */
+.cn-snav { display:flex; align-items:stretch; margin-bottom:10px; }
+.cn-sb { background:none; border:1px solid #d8cfc4; color:#9a9590; font-size:11px; padding:5px 12px; cursor:pointer; transition:color .1s, border-color .1s; font-family:var(--fm); }
+.cn-sb:first-child { border-radius:4px 0 0 4px; }
+.cn-sb:last-child  { border-radius:0 4px 4px 0; }
+.cn-sb:hover { color:#1a1a1a; border-color:#9a9590; }
+.cn-slbl { border:1px solid #d8cfc4; border-left:none; border-right:none; padding:5px 16px; font-family:var(--fm); font-size:10px; color:#5a5550; min-width:116px; text-align:center; }
+
+/* fig caption */
+.cn-fig { font-family:var(--fm); font-size:9px; color:#9a9590; letter-spacing:.8px; text-transform:uppercase; margin:8px 0 28px; padding-top:7px; border-top:1px solid #e8e2d9; }
+
+/* callout */
+.cn-callout { display:flex; gap:14px; margin:20px 0 24px; padding:14px 18px; background:#f0ebe3; border-radius:4px; border-left:3px solid #d8cfc4; }
+.cn-c-mark { font-size:22px; color:#c8bfb4; line-height:1.1; flex-shrink:0; font-weight:700; }
+.cn-c-text { font-size:12.5px; color:#5a5550; line-height:1.75; font-style:italic; }
+.cn-c-text code { font-family:var(--fm); font-size:11.5px; font-style:normal; color:var(--accent); background:rgba(224,92,26,.08); padding:1px 4px; border-radius:2px; }
+
+/* memory viz — light */
+.cn-memgrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:20px 0; }
+.cn-mcl { font-family:var(--fm); font-size:9px; color:#9a9590; letter-spacing:1px; margin-bottom:7px; }
+.cn-mframe { border:1px solid #d8cfc4; border-radius:4px; overflow:hidden; background:#fff; margin-bottom:8px; }
+.cn-mft { padding:5px 10px; background:#f0ebe3; border-bottom:1px solid #d8cfc4; display:flex; justify-content:space-between; align-items:center; font-family:var(--fm); font-size:10px; color:#5a5550; }
+.cn-mbadge { font-size:8px; font-weight:700; padding:1px 5px; border-radius:2px; }
+.cn-mbadge.moved { background:rgba(248,81,73,.1); color:#f85149; }
+.cn-mbadge.owner { background:rgba(63,185,80,.1); color:#3fb950; }
+.cn-mfield { display:flex; align-items:center; padding:4px 10px; border-bottom:1px solid #f5f1ec; }
+.cn-mfield:last-child { border-bottom:none; }
+.cn-mk { font-family:var(--fm); font-size:10px; color:#9a9590; width:28px; }
+.cn-mv { font-family:var(--fm); font-size:10px; color:#1a1a1a; }
+.cn-mv.cross { color:#f85149; text-decoration:line-through; }
+.cn-mv.ptr   { color:#58a6ff; }
+.cn-hframe { border:1px solid #d8cfc4; border-radius:4px; overflow:hidden; background:#fff; }
+.cn-hft { padding:5px 10px; background:#f0ebe3; border-bottom:1px solid #d8cfc4; font-family:var(--fm); font-size:10px; color:#5a5550; }
+.cn-hbytes { display:flex; gap:4px; padding:10px; flex-wrap:wrap; min-height:40px; }
+.cn-hbyte { width:22px; height:22px; border:1px solid #d8cfc4; border-radius:2px; display:flex; align-items:center; justify-content:center; font-family:var(--fm); font-size:10px; color:#1a1a1a; background:#f8f4ef; }
+
+/* error block */
+.cn-errb { background:#1c2128; border-radius:6px; padding:14px 18px; margin:20px 0; font-family:var(--fm); font-size:11.5px; line-height:1.8; }
+.cn-el { display:block; }
+.cn-el.head { color:#f85149; }
+.cn-el.loc  { color:#8b949e; }
+.cn-el.dim  { color:#484f58; }
+.cn-el.code { color:#c9d1d9; }
+.cn-el.ref  { color:#d29922; }
+.cn-el.hint { color:#3fb950; }
+
+/* pull quote */
+.cn-pq { margin:36px 0; padding:22px 0; border-top:2px solid #d8cfc4; border-bottom:2px solid #d8cfc4; }
+.cn-pqt { font-size:19px; font-style:italic; color:#1a1a1a; line-height:1.55; margin-bottom:10px; }
+.cn-pqa { font-family:var(--fm); font-size:9px; color:#9a9590; letter-spacing:1px; }
+
+/* closing question */
+.cn-closing { margin:40px 0 32px; padding:26px 26px 22px; background:#f0ebe3; border-radius:6px; border:1px solid #d8cfc4; }
+.cn-qmark { font-size:52px; color:var(--accent); line-height:1; margin-bottom:10px; font-style:italic; }
+.cn-qtitle { font-size:26px; font-weight:700; font-style:italic; color:#1a1a1a; margin-bottom:14px; }
+.cn-qprompt { font-size:13.5px; color:#5a5550; line-height:1.85; margin-bottom:6px; }
+.cn-qnote { font-size:11px; color:#9a9590; margin-bottom:16px; }
+.cn-qta { display:none; width:100%; min-height:80px; padding:10px 12px; border:1px solid #d8cfc4; border-radius:4px; background:#fff; font-family:var(--f); font-size:13px; color:#1a1a1a; line-height:1.65; resize:vertical; margin-bottom:12px; outline:none; }
+.cn-qta:focus { border-color:#9a9590; }
+.cn-qta.show { display:block; }
+.cn-qbtn { background:var(--accent); border:none; color:#fff; font-size:11px; font-weight:700; letter-spacing:1px; padding:9px 20px; border-radius:4px; transition:opacity .12s; font-family:var(--fm); }
+.cn-qbtn:hover { opacity:.85; }
+
+/* portals section */
+.cn-portals { margin:36px 0; }
+.cn-ptitle { font-size:24px; font-weight:700; color:#1a1a1a; margin-bottom:10px; }
+.cn-plead { font-size:13.5px; color:#5a5550; line-height:1.85; margin-bottom:22px; }
+.cn-pentry { display:flex; gap:16px; padding:14px 6px; border-bottom:1px solid #e8e2d9; cursor:pointer; border-radius:3px; transition:background .1s, padding-left .1s; }
+.cn-pentry:last-child { border-bottom:none; }
+.cn-pentry:hover { background:#f0ebe3; padding-left:12px; }
+.cn-pnum { font-family:var(--fm); font-size:11px; color:#9a9590; font-style:italic; flex-shrink:0; width:20px; padding-top:2px; }
+.cn-pbody { flex:1; }
+.cn-ptk { font-family:var(--fm); font-size:9px; font-weight:700; letter-spacing:1px; margin-bottom:3px; }
+.cn-ptk.comp { color:#58a6ff; } .cn-ptk.os { color:#bc8cff; } .cn-ptk.proj { color:var(--accent); }
+.cn-pname { font-size:14px; font-weight:600; color:#1a1a1a; margin-bottom:3px; }
+.cn-pdesc { font-size:12px; color:#5a5550; line-height:1.6; }
+.cn-pdesc code { font-family:var(--fm); font-size:11px; color:var(--accent); }
+.cn-parrow { color:#c8bfb4; font-size:15px; align-self:center; flex-shrink:0; }
+
+/* bottom bar */
+#cn-bar { position:fixed; bottom:0; left:0; right:0; height:34px; background:#f0ebe3; border-top:1px solid #d8cfc4; display:none; align-items:center; padding:0 40px; font-family:var(--fm); font-size:10px; color:#9a9590; gap:0; }
+#cn-bar.show { display:flex; }
+.cn-bsep { margin:0 10px; color:#d8cfc4; }
+.cn-bnext { margin-left:auto; background:none; border:none; font-family:var(--fm); font-size:10px; color:#5a5550; cursor:pointer; transition:color .1s; }
+.cn-bnext:hover { color:#1a1a1a; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ TOPBAR ══════════ -->
+<nav id="topbar">
+  <div class="t-logo" onclick="goView('bosque')">
+    <div class="t-logo-mark">⬡</div>
+    <span class="t-logo-word">FORJA</span>
+  </div>
+
+  <!-- state: bosque -->
+  <div class="tbs active" id="tbs-bosque">
+    <div class="t-sep"></div>
+    <span style="font-size:12px;color:var(--tm)">Atlas</span>
+    <div class="t-spacer"></div>
+    <div class="t-demo">DEMO</div>
+  </div>
+
+  <!-- state: mapa -->
+  <div class="tbs" id="tbs-mapa">
+    <div class="t-sep"></div>
+    <button class="t-back" onclick="goView('bosque')">← volver</button>
+    <div class="t-sep"></div>
+    <span class="t-crumb-seg">El mapa</span>
+    <div class="t-spacer"></div>
+    <div class="t-demo">DEMO</div>
+  </div>
+
+  <!-- state: track -->
+  <div class="tbs" id="tbs-track">
+    <div class="t-sep"></div>
+    <button class="t-back" onclick="goView('bosque')">← atlas</button>
+    <div class="t-sep"></div>
+    <span class="t-crumb-seg">Rust Core</span>
+    <span class="t-crumb-div">/</span>
+    <span class="t-crumb-seg hi">C2 · Structs, Enums, Organización</span>
+    <div class="t-spacer"></div>
+    <div class="t-demo">DEMO</div>
+  </div>
+
+  <!-- state: lab -->
+  <div class="tbs" id="tbs-lab">
+    <div class="t-sep"></div>
+    <button class="t-back" onclick="goView('track')">← track</button>
+    <div class="t-sep"></div>
+    <span class="t-crumb-seg">Rust Core</span>
+    <span class="t-crumb-div">/</span>
+    <span class="t-crumb-seg">C2</span>
+    <span class="t-crumb-div">/</span>
+    <span class="t-crumb-seg hi">Ownership</span>
+    <div class="t-spacer"></div>
+    <div class="t-step-nav">
+      <button class="t-nav-btn" onclick="prevStep()">← Anterior</button>
+      <span class="t-step-lbl" id="step-label">paso 3 de 5</span>
+      <button class="t-nav-btn" onclick="nextStep()">Siguiente →</button>
+    </div>
+    <button class="t-nav-btn" onclick="goView('cuaderno')" style="color:var(--accent);border-color:rgba(224,92,26,.4)">Leer blogpost</button>
+    <button class="t-run-btn" onclick="runCompile()">Compilar</button>
+    <div class="t-sep"></div>
+    <div class="t-demo">DEMO</div>
+  </div>
+
+  <!-- state: cuaderno -->
+  <div class="tbs" id="tbs-cuaderno">
+    <div class="t-sep"></div>
+    <span style="font-family:var(--fm);font-size:9px;letter-spacing:1.5px;color:var(--tm)">CUADERNO DE CAMPO</span>
+    <div class="t-sep"></div>
+    <span class="t-crumb-seg">Rust Core</span>
+    <span class="t-crumb-div">/</span>
+    <span class="t-crumb-seg">C2</span>
+    <span class="t-crumb-div">/</span>
+    <span class="t-crumb-seg hi">Ownership · LB4</span>
+    <div class="t-spacer"></div>
+    <button class="t-nav-btn" onclick="goView('lab')" style="color:var(--accent);border-color:rgba(224,92,26,.4)">Abrir en Taller ↗</button>
+    <div class="t-sep"></div>
+    <div class="t-demo">DEMO</div>
+  </div>
+</nav>
+
+<!-- ══════════ VIEW 1 — EL BOSQUE ══════════ -->
+<div class="view active" id="v-bosque">
+  <div class="bosque-inner">
+    <div class="bosque-title">El bosque.</div>
+    <p class="bosque-phil">
+      Forja no tiene ranking ni rachas. No hay confeti cuando completás un módulo.<br>
+      Hay <em>entender cómo funciona la máquina</em> — de verdad, desde abajo.
+    </p>
+    <p class="bosque-note">Cada vez que Rust hace algo sorprendente, hay una razón. Esa razón vive en el compilador o en el kernel.</p>
+
+    <div class="bosque-stats">
+      <div class="bstat">
+        <div class="bstat-n">23<span class="denom">/184</span></div>
+        <div class="bstat-l">unidades</div>
+      </div>
+      <div class="bstat">
+        <div class="bstat-n">14<span class="denom">/96</span></div>
+        <div class="bstat-l">labs completados</div>
+      </div>
+      <div class="bstat">
+        <div class="bstat-n">2<span class="denom">/22</span></div>
+        <div class="bstat-l">projects entregados</div>
+      </div>
+      <div class="bstat hl">
+        <div class="bstat-n">7</div>
+        <div class="bstat-l">portales recorridos</div>
+      </div>
+      <div class="bstat">
+        <div class="bstat-n">38<span class="denom">h</span></div>
+        <div class="bstat-l">tiempo en taller</div>
+      </div>
+    </div>
+
+    <div class="bosque-sec">Los tres caminos</div>
+    <div class="bosque-tracks">
+      <div class="tc rust" onclick="goView('track')">
+        <div class="tc-id">TRACK 01</div>
+        <div class="tc-role suelo">EL SUELO</div>
+        <div class="tc-name">Rust Core</div>
+        <div class="tc-desc">El mapa que muestra dónde estás cuando programás. Ownership, tipos, concurrencia — y por qué cada restricción existe.</div>
+        <div class="tc-status curso">EN CURSO</div>
+        <div class="tc-bar"><div class="tc-fill rust" style="width:49%"></div></div>
+        <div class="tc-prog">23/47 unidades · 49%</div>
+      </div>
+      <div class="tc comp" onclick="goView('mapa')">
+        <div class="tc-id">TRACK 02</div>
+        <div class="tc-role dest">DESTINO</div>
+        <div class="tc-name">Compilers</div>
+        <div class="tc-desc">De texto fuente a código máquina. Lexer, parser, IR, SSA, RISC-V directo — después Cranelift.</div>
+        <div class="tc-status accs">ACCESIBLE · 3 portales abiertos</div>
+        <div class="tc-bar"><div class="tc-fill comp" style="width:0%"></div></div>
+        <div class="tc-prog">0/52 unidades · prerequisitos Rust C1–C3</div>
+      </div>
+      <div class="tc os" onclick="goView('mapa')">
+        <div class="tc-id">TRACK 03</div>
+        <div class="tc-role dest">DESTINO</div>
+        <div class="tc-name">Operating Systems</div>
+        <div class="tc-desc">Bare metal en RISC-V. Boot, traps, page tables, scheduler, filesystem — en QEMU, en Rust, sin stdlib.</div>
+        <div class="tc-status accs">ACCESIBLE · 4 portales abiertos</div>
+        <div class="tc-bar"><div class="tc-fill os" style="width:0%"></div></div>
+        <div class="tc-prog">0/42 unidades · prerequisitos Rust C1, C2, C6</div>
+      </div>
+    </div>
+
+    <div class="bosque-ctas">
+      <button class="b-cta pri" onclick="goView('track')">Retomar Rust Core →</button>
+      <button class="b-cta" onclick="goView('mapa')">Ver el mapa</button>
+      <button class="b-cta" onclick="goView('lab')">Demo: lab activo</button>
+      <button class="b-cta" onclick="goView('cuaderno')">Demo: Cuaderno de Campo</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ VIEW 2 — EL MAPA ══════════ -->
+<div class="view" id="v-mapa">
+  <div class="mapa-inner">
+    <div class="mapa-h">
+      <div class="mapa-title">El mapa.</div>
+      <div class="mapa-sub">Las conexiones reales entre los tres tracks. Las líneas punteadas son portales abiertos desde tu posición actual.</div>
+    </div>
+
+    <div class="mapa-legend">
+      <div class="leg"><div class="leg-dot done"></div> Completado</div>
+      <div class="leg"><div class="leg-dot act"></div> Activo</div>
+      <div class="leg"><div class="leg-dot avail"></div> Disponible</div>
+      <div class="leg"><div class="leg-dot lock"></div> Bloqueado</div>
+      <div class="leg"><div class="leg-line"></div> Prerequisito</div>
+      <div class="leg"><div class="leg-dash"></div> Portal abierto</div>
+    </div>
+
+    <div class="map-wrap">
+      <svg viewBox="0 0 860 310" width="100%" style="min-width:700px;display:block;">
+        <defs>
+          <marker id="arr-rust" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 z" fill="#e05c1a" opacity=".5"/>
+          </marker>
+          <marker id="arr-comp" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 z" fill="#58a6ff" opacity=".5"/>
+          </marker>
+          <marker id="arr-os" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 z" fill="#bc8cff" opacity=".5"/>
+          </marker>
+        </defs>
+
+        <!-- Row labels -->
+        <text x="12" y="88" font-size="8" fill="#484f58" letter-spacing="1.5" font-family="JetBrains Mono, monospace" font-weight="600">RUST CORE</text>
+        <text x="12" y="178" font-size="8" fill="#484f58" letter-spacing="1.5" font-family="JetBrains Mono, monospace" font-weight="600">COMPILERS</text>
+        <text x="12" y="268" font-size="8" fill="#484f58" letter-spacing="1.5" font-family="JetBrains Mono, monospace" font-weight="600">OS</text>
+
+        <!-- Row lines -->
+        <line x1="90" y1="83" x2="770" y2="83" stroke="#21262d" stroke-width="1"/>
+        <line x1="90" y1="173" x2="770" y2="173" stroke="#21262d" stroke-width="1"/>
+        <line x1="90" y1="263" x2="770" y2="263" stroke="#21262d" stroke-width="1"/>
+
+        <!-- Rust prereq edges -->
+        <line x1="147" y1="83" x2="183" y2="83" stroke="#e05c1a" stroke-width="1.5" opacity=".5"/>
+        <line x1="257" y1="83" x2="293" y2="83" stroke="#e05c1a" stroke-width="1.5" opacity=".35" stroke-dasharray="3,2"/>
+        <line x1="367" y1="83" x2="403" y2="83" stroke="#484f58" stroke-width="1.5" opacity=".4" stroke-dasharray="2,3"/>
+        <line x1="477" y1="83" x2="513" y2="83" stroke="#484f58" stroke-width="1.5" opacity=".3" stroke-dasharray="2,3"/>
+        <line x1="587" y1="83" x2="623" y2="83" stroke="#484f58" stroke-width="1.5" opacity=".25" stroke-dasharray="2,3"/>
+
+        <!-- Compilers prereq edges -->
+        <line x1="257" y1="173" x2="293" y2="173" stroke="#484f58" stroke-width="1.5" opacity=".3" stroke-dasharray="2,3"/>
+        <line x1="367" y1="173" x2="403" y2="173" stroke="#484f58" stroke-width="1.5" opacity=".3" stroke-dasharray="2,3"/>
+        <line x1="477" y1="173" x2="513" y2="173" stroke="#484f58" stroke-width="1.5" opacity=".3" stroke-dasharray="2,3"/>
+        <line x1="587" y1="173" x2="623" y2="173" stroke="#484f58" stroke-width="1.5" opacity=".25" stroke-dasharray="2,3"/>
+
+        <!-- OS prereq edges -->
+        <line x1="257" y1="263" x2="293" y2="263" stroke="#484f58" stroke-width="1.5" opacity=".3" stroke-dasharray="2,3"/>
+        <line x1="367" y1="263" x2="403" y2="263" stroke="#484f58" stroke-width="1.5" opacity=".3" stroke-dasharray="2,3"/>
+        <line x1="477" y1="263" x2="513" y2="263" stroke="#484f58" stroke-width="1.5" opacity=".25" stroke-dasharray="2,3"/>
+        <line x1="587" y1="263" x2="623" y2="263" stroke="#484f58" stroke-width="1.5" opacity=".2" stroke-dasharray="2,3"/>
+
+        <!-- Portal connections (dashed, from C2) -->
+        <!-- C2 → Compilers A -->
+        <line x1="220" y1="96" x2="220" y2="160" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="4,3" opacity=".7" marker-end="url(#arr-comp)"/>
+        <!-- C2 → OS A -->
+        <line x1="225" y1="96" x2="225" y2="250" stroke="#bc8cff" stroke-width="1.5" stroke-dasharray="4,3" opacity=".6" marker-end="url(#arr-os)"/>
+        <!-- C3 → Compilers B -->
+        <line x1="335" y1="96" x2="315" y2="160" stroke="#58a6ff" stroke-width="1" stroke-dasharray="3,3" opacity=".4" marker-end="url(#arr-comp)"/>
+        <!-- C3 → OS C -->
+        <line x1="330" y1="96" x2="440" y2="250" stroke="#bc8cff" stroke-width="1" stroke-dasharray="3,3" opacity=".35" marker-end="url(#arr-os)"/>
+        <!-- C6 → Compilers E and OS E -->
+        <line x1="655" y1="96" x2="655" y2="160" stroke="#58a6ff" stroke-width="1" stroke-dasharray="3,3" opacity=".3" marker-end="url(#arr-comp)"/>
+        <line x1="660" y1="96" x2="660" y2="250" stroke="#bc8cff" stroke-width="1" stroke-dasharray="3,3" opacity=".25" marker-end="url(#arr-os)"/>
+
+        <!-- RUST NODES -->
+        <!-- C1: done -->
+        <rect x="90" y="69" width="57" height="28" rx="4" fill="#1c2128" stroke="#e05c1a" stroke-width="1.5" opacity=".7"/>
+        <text x="118" y="87" text-anchor="middle" font-size="10" fill="#e05c1a" font-family="JetBrains Mono, monospace" font-weight="600">C1</text>
+
+        <!-- C2: active -->
+        <rect x="192" y="67" width="57" height="32" rx="4" fill="rgba(224,92,26,.15)" stroke="#e05c1a" stroke-width="2"/>
+        <circle cx="249" cy="67" r="5" fill="#e05c1a"/>
+        <text x="220" y="87" text-anchor="middle" font-size="10" fill="#e6edf3" font-family="JetBrains Mono, monospace" font-weight="600">C2</text>
+        <text x="220" y="97" text-anchor="middle" font-size="7" fill="#e05c1a" font-family="JetBrains Mono, monospace">ACTIVO</text>
+
+        <!-- C3: available -->
+        <rect x="302" y="69" width="57" height="28" rx="4" fill="#161b22" stroke="rgba(224,92,26,.4)" stroke-width="1.5"/>
+        <text x="330" y="87" text-anchor="middle" font-size="10" fill="#8b949e" font-family="JetBrains Mono, monospace" font-weight="600">C3</text>
+
+        <!-- C4-C6: locked -->
+        <rect x="412" y="69" width="57" height="28" rx="4" fill="#161b22" stroke="#21262d" stroke-width="1.5"/>
+        <text x="440" y="87" text-anchor="middle" font-size="10" fill="#484f58" font-family="JetBrains Mono, monospace" font-weight="600">C4</text>
+        <rect x="522" y="69" width="57" height="28" rx="4" fill="#161b22" stroke="#21262d" stroke-width="1.5"/>
+        <text x="550" y="87" text-anchor="middle" font-size="10" fill="#484f58" font-family="JetBrains Mono, monospace" font-weight="600">C5</text>
+        <rect x="627" y="69" width="57" height="28" rx="4" fill="#161b22" stroke="#21262d" stroke-width="1.5"/>
+        <text x="655" y="87" text-anchor="middle" font-size="10" fill="#484f58" font-family="JetBrains Mono, monospace" font-weight="600">C6</text>
+
+        <!-- COMPILERS NODES (portal-reachable from C2 = glowing border) -->
+        <rect x="192" y="159" width="57" height="28" rx="4" fill="rgba(88,166,255,.06)" stroke="rgba(88,166,255,.5)" stroke-width="1.5" stroke-dasharray="3,2"/>
+        <text x="220" y="177" text-anchor="middle" font-size="10" fill="#58a6ff" font-family="JetBrains Mono, monospace" font-weight="600">A</text>
+        <rect x="302" y="159" width="57" height="28" rx="4" fill="#161b22" stroke="#21262d" stroke-width="1.5"/>
+        <text x="330" y="177" text-anchor="middle" font-size="10" fill="#484f58" font-family="JetBrains Mono, monospace" font-weight="600">B</text>
+        <rect x="412" y="159" width="57" height="28" rx="4" fill="#161b22" stroke="#21262d" stroke-width="1.5"/>
+        <text x="440" y="177" text-anchor="middle" font-size="10" fill="#484f58" font-family="JetBrains Mono, monospace" font-weight="600">C</text>
+        <rect x="522" y="159" width="57" height="28" rx="4" fill="#161b22" stroke="#21262d" stroke-width="1.5"/>
+        <text x="550" y="177" text-anchor="middle" font-size="10" fill="#484f58" font-family="JetBrains Mono, monospace" font-weight="600">D</text>
+        <rect x="627" y="159" width="57" height="28" rx="4" fill="#161b22" stroke="#21262d" stroke-width="1.5"/>
+        <text x="655" y="177" text-anchor="middle" font-size="10" fill="#484f58" font-family="JetBrains Mono, monospace" font-weight="600">E</text>
+
+        <!-- OS NODES -->
+        <rect x="192" y="249" width="57" height="28" rx="4" fill="rgba(188,140,255,.05)" stroke="rgba(188,140,255,.5)" stroke-width="1.5" stroke-dasharray="3,2"/>
+        <text x="220" y="267" text-anchor="middle" font-size="10" fill="#bc8cff" font-family="JetBrains Mono, monospace" font-weight="600">A</text>
+        <rect x="302" y="249" width="57" height="28" rx="4" fill="#161b22" stroke="#21262d" stroke-width="1.5"/>
+        <text x="330" y="267" text-anchor="middle" font-size="10" fill="#484f58" font-family="JetBrains Mono, monospace" font-weight="600">B</text>
+        <rect x="412" y="249" width="57" height="28" rx="4" fill="#161b22" stroke="#21262d" stroke-width="1.5"/>
+        <text x="440" y="267" text-anchor="middle" font-size="10" fill="#484f58" font-family="JetBrains Mono, monospace" font-weight="600">C</text>
+        <rect x="522" y="249" width="57" height="28" rx="4" fill="#161b22" stroke="#21262d" stroke-width="1.5"/>
+        <text x="550" y="267" text-anchor="middle" font-size="10" fill="#484f58" font-family="JetBrains Mono, monospace" font-weight="600">D</text>
+        <rect x="627" y="249" width="57" height="28" rx="4" fill="#161b22" stroke="#21262d" stroke-width="1.5"/>
+        <text x="655" y="267" text-anchor="middle" font-size="10" fill="#484f58" font-family="JetBrains Mono, monospace" font-weight="600">E</text>
+
+        <!-- Node labels below -->
+        <text x="118" y="105" text-anchor="middle" font-size="8" fill="#484f58" font-family="JetBrains Mono, monospace">superficie</text>
+        <text x="220" y="107" text-anchor="middle" font-size="8" fill="#8b949e" font-family="JetBrains Mono, monospace">ownership</text>
+        <text x="330" y="105" text-anchor="middle" font-size="8" fill="#484f58" font-family="JetBrains Mono, monospace">memoria</text>
+        <text x="440" y="105" text-anchor="middle" font-size="8" fill="#484f58" font-family="JetBrains Mono, monospace">tipos</text>
+        <text x="550" y="105" text-anchor="middle" font-size="8" fill="#484f58" font-family="JetBrains Mono, monospace">colecciones</text>
+        <text x="655" y="105" text-anchor="middle" font-size="8" fill="#484f58" font-family="JetBrains Mono, monospace">concurrencia</text>
+        <text x="220" y="195" text-anchor="middle" font-size="8" fill="#58a6ff" font-family="JetBrains Mono, monospace" opacity=".7">front-end</text>
+        <text x="220" y="285" text-anchor="middle" font-size="8" fill="#bc8cff" font-family="JetBrains Mono, monospace" opacity=".7">bare metal</text>
+
+        <!-- Integration lab node -->
+        <rect x="740" y="155" width="72" height="36" rx="4" fill="rgba(240,192,64,.06)" stroke="rgba(240,192,64,.3)" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <text x="776" y="171" text-anchor="middle" font-size="8" fill="#f0c040" font-family="JetBrains Mono, monospace" font-weight="600">I4</text>
+        <text x="776" y="182" text-anchor="middle" font-size="7" fill="#f0c040" font-family="JetBrains Mono, monospace">full stack</text>
+        <line x1="684" y1="173" x2="740" y2="173" stroke="rgba(240,192,64,.3)" stroke-width="1" stroke-dasharray="3,2"/>
+      </svg>
+    </div>
+
+    <div class="retos-sec" style="margin-bottom:8px">Retos a tiro</div>
+    <div class="retos-sub">Desbloqueados por lo que ya hiciste. Sin obligación.</div>
+    <div class="retos-grid">
+      <div class="reto" onclick="goView('lab')">
+        <div class="reto-top">
+          <span class="reto-type proj">PROJECT</span>
+          <span class="reto-time">~4h</span>
+        </div>
+        <div class="reto-name">Implementá tu propio Box&lt;T&gt;</div>
+        <div class="reto-desc">Allocar en el heap sin usar Box. Implementá Drop, Deref, DerefMut. Sin clone, sin Rc.</div>
+        <div class="reto-meta"><span>P03</span><span>Rust Core · C3</span></div>
+      </div>
+      <div class="reto">
+        <div class="reto-top">
+          <span class="reto-type lab">LAB</span>
+          <span class="reto-time">~45min</span>
+        </div>
+        <div class="reto-name">Caminá una page table</div>
+        <div class="reto-desc">Desde un anchor en OS C: recorrés la tabla Sv39 a mano y observás qué ve el hardware.</div>
+        <div class="reto-meta"><span>L17</span><span>OS Track · desde anchor</span></div>
+      </div>
+      <div class="reto">
+        <div class="reto-top">
+          <span class="reto-type intg">INTEGRATION</span>
+          <span class="reto-time">~6h</span>
+        </div>
+        <div class="reto-name">El allocator que escribe Rust</div>
+        <div class="reto-desc">Tu allocator en Rust habla directamente con las page tables del kernel. Requiere C3 + OS B2.</div>
+        <div class="reto-meta"><span>I2</span><span>Convergencia · C3 + OS B2</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ VIEW 3 — TRACK DETAIL ══════════ -->
+<div class="view" id="v-track">
+  <!-- Left: chapter list -->
+  <div class="td-sidebar">
+    <div class="tds-head">
+      <div class="tds-track">TRACK 01 · EL SUELO</div>
+      <div class="tds-name">Rust Core</div>
+      <div class="tds-stats">23/47 unidades · 14/32 labs · 2/7 projects</div>
+      <div class="tds-prog-bar"><div class="tds-prog-fill"></div></div>
+    </div>
+    <div class="ch-item">
+      <div class="ch-num">C1</div>
+      <span class="ch-tag done">COMPLETO</span>
+      <div class="ch-name done">La superficie</div>
+      <div class="ch-bar"><div class="ch-bar-fill" style="width:100%"></div></div>
+    </div>
+    <div class="ch-item act" id="ch2-item">
+      <div class="ch-num">C2</div>
+      <span class="ch-tag curso">EN CURSO</span>
+      <div class="ch-name act">Structs, Enums, Organización</div>
+      <div class="ch-bar"><div class="ch-bar-fill" style="width:44%"></div></div>
+    </div>
+    <div class="ch-item">
+      <div class="ch-num">C3</div>
+      <div class="ch-name next">El modelo de memoria</div>
+    </div>
+    <div class="ch-item">
+      <div class="ch-num">C4</div>
+      <div class="ch-name lock">Sistema de tipos</div>
+    </div>
+    <div class="ch-item">
+      <div class="ch-num">C5</div>
+      <div class="ch-name lock">Colecciones y errores</div>
+    </div>
+    <div class="ch-item">
+      <div class="ch-num">C6</div>
+      <div class="ch-name lock">Concurrencia</div>
+    </div>
+    <div class="ch-item">
+      <div class="ch-num">C7</div>
+      <div class="ch-name lock">Unsafe y el runtime mínimo</div>
+    </div>
+    <div class="ch-item">
+      <div class="ch-num">C8</div>
+      <div class="ch-name lock">Macros, FFI, Rust en el sistema</div>
+    </div>
+  </div>
+
+  <!-- Center: units -->
+  <div class="td-main">
+    <div class="tdm-label">CURSO 2 · EN CURSO · 44%</div>
+    <div class="tdm-title">Structs, Enums, Organización</div>
+    <div class="tdm-stats">4 módulos · 9 unidades · 3 labs · 1 project</div>
+    <div class="tdm-divider"></div>
+
+    <div class="unit-row">
+      <div class="u-num">2.1</div>
+      <div class="u-name done">Structs básicos — campos, métodos, impl</div>
+      <div class="u-badges"><span class="u-badge done">LEER</span></div>
+      <div class="u-time">25min</div>
+      <div class="u-dot done"></div>
+    </div>
+    <div class="unit-row">
+      <div class="u-num">2.2</div>
+      <div class="u-name done">Structs bajo el microscopio — alignment, repr</div>
+      <div class="u-badges"><span class="u-badge done">LEER</span><span class="u-badge done">LAB</span></div>
+      <div class="u-time">40min</div>
+      <div class="u-dot done"></div>
+    </div>
+    <div class="unit-row" onclick="goView('lab')">
+      <div class="u-num">2.3</div>
+      <div class="u-name act">Enums con datos — variantes, Option, Result</div>
+      <div class="u-badges"><span class="u-badge lab">LAB</span></div>
+      <div class="u-time">30min</div>
+      <div class="u-dot act"></div>
+    </div>
+    <div class="unit-row">
+      <div class="u-num">2.4</div>
+      <div class="u-name">Ownership básico — move, copy, borrow</div>
+      <div class="u-badges"><span class="u-badge lab">LAB</span></div>
+      <div class="u-time">35min</div>
+      <div class="u-dot act" style="background:var(--accent);box-shadow:0 0 0 2px rgba(224,92,26,.25)"></div>
+    </div>
+    <div class="unit-row">
+      <div class="u-num">2.5</div>
+      <div class="u-name">Enums como state machines — discriminant, MIR</div>
+      <div class="u-badges"><span class="u-badge lab lock">LAB</span></div>
+      <div class="u-time">45min</div>
+      <div class="u-dot"></div>
+    </div>
+    <div class="unit-row">
+      <div class="u-num">2.6</div>
+      <div class="u-name">Pattern matching exhaustivo</div>
+      <div class="u-badges"><span class="u-badge lock">LEER</span></div>
+      <div class="u-time">20min</div>
+      <div class="u-dot"></div>
+    </div>
+    <div class="unit-row">
+      <div class="u-num">2.7</div>
+      <div class="u-name">Módulos, crates, packages</div>
+      <div class="u-badges"><span class="u-badge lock">LEER</span></div>
+      <div class="u-time">20min</div>
+      <div class="u-dot"></div>
+    </div>
+    <div class="unit-row">
+      <div class="u-num">2.8</div>
+      <div class="u-name">Workspaces y escala real</div>
+      <div class="u-badges"><span class="u-badge lock">LEER</span><span class="u-badge lab lock">LAB</span></div>
+      <div class="u-time">35min</div>
+      <div class="u-dot"></div>
+    </div>
+  </div>
+
+  <!-- Right: widgets -->
+  <div class="td-right">
+    <div class="tdr-sec">
+      <div class="tdr-label">Lab activo</div>
+      <div class="retomar" onclick="goView('lab')">
+        <div class="ret-badge">EN CURSO</div>
+        <div class="ret-name">El gran descubrimiento</div>
+        <div class="ret-loc">C2 · L04 · Ownership</div>
+        <div class="ret-step">paso 3 de 5 · Qué pasa cuando asignamos</div>
+        <button class="ret-btn">Retomar →</button>
+      </div>
+    </div>
+
+    <div class="tdr-sec">
+      <div class="tdr-label">Portales abiertos · 3</div>
+      <div class="portal-entry">
+        <div class="pe-track comp">COMPILERS</div>
+        <div class="pe-desc">El borrow checker analiza el CFG. Tu compilador tendrá que hacer lo mismo.</div>
+        <div class="pe-path">→ Compilers B · Semántica · Symbol Tables</div>
+      </div>
+      <div class="portal-entry">
+        <div class="pe-track os">OS</div>
+        <div class="pe-desc">El stack frame que ves aquí es lo que el kernel guarda en un context switch.</div>
+        <div class="pe-path">→ OS B · Interrupts · Trap Handling</div>
+      </div>
+      <div class="portal-entry">
+        <div class="pe-track os">OS</div>
+        <div class="pe-desc">El allocator que Rust llama debajo es lo que el kernel implementa para el heap.</div>
+        <div class="pe-path">→ OS C · Memoria · Physical Memory</div>
+      </div>
+    </div>
+
+    <div class="tdr-sec">
+      <div class="tdr-label">Anchors de vuelta · 2</div>
+      <div class="anchor-entry">
+        <div class="ae-from">desde OS Track</div>
+        <div class="ae-desc">Volvé a Rust C1 cuando los binarios del kernel te confundan.</div>
+        <div class="ae-path">← Rust C1 · La superficie · Tooling</div>
+      </div>
+      <div class="anchor-entry">
+        <div class="ae-from">desde Compilers Track</div>
+        <div class="ae-desc">Si el borrow checker rechaza tu AST con Rc, volvé aquí.</div>
+        <div class="ae-path">← Rust C2 · Ownership D2</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ VIEW 4 — LAB ══════════ -->
+<div class="view" id="v-lab">
+  <div class="lab-body">
+    <!-- Left nav -->
+    <div class="lab-nav">
+      <div class="lab-nav-head">
+        <div class="lnh-track">RUST CORE · C2</div>
+        <div class="lnh-course">Structs, Enums, Org.</div>
+      </div>
+      <div class="lab-nav-unit">
+        <div class="lnu-num">2.1</div>
+        <div class="lnu-name">Structs básicos</div>
+      </div>
+      <div class="lab-nav-unit">
+        <div class="lnu-num">2.2</div>
+        <div class="lnu-name">Structs bajo el microscopio</div>
+      </div>
+      <div class="lab-nav-unit">
+        <div class="lnu-num">2.3</div>
+        <div class="lnu-name">Enums con datos</div>
+      </div>
+      <div class="lab-nav-unit act">
+        <div class="lnu-num">2.4</div>
+        <div class="lnu-name act">Ownership — move, copy, borrow</div>
+      </div>
+      <div class="lab-nav-unit">
+        <div class="lnu-num">2.5</div>
+        <div class="lnu-name" style="color:var(--tm)">Enums como state machines</div>
+      </div>
+    </div>
+
+    <!-- Center -->
+    <div class="lab-center">
+      <div class="lab-title-bar">
+        <div class="lab-tag">RUST CORE · C2 · OWNERSHIP · D1</div>
+        <div class="lab-title">El gran <em>descubrimiento</em></div>
+      </div>
+      <div class="step-bar">
+        <div class="sdot done"></div>
+        <div class="sdot done"></div>
+        <div class="sdot act"></div>
+        <div class="sdot"></div>
+        <div class="sdot"></div>
+        <span class="step-txt" id="inner-step-lbl">paso 3 de 5 · ¿Qué pasa cuando asignamos?</span>
+      </div>
+
+      <div class="lab-content-row">
+        <div class="lab-editor-col">
+          <div class="lab-step-prose">
+            <p>Tenés una <code>String</code> en <code>s1</code>. Escribís <code>let s2 = s1</code>. ¿Qué pasa exactamente?<br>
+            Compilá y observá el error. Después mirá la visualización de memoria a la derecha.</p>
+          </div>
+
+          <div class="code-editor" id="code-editor">
+            <div class="cl"><span class="cl-n">1</span><span class="cl-c"><span class="kw">fn</span> <span class="fn">main</span>() {</span></div>
+            <div class="cl"><span class="cl-n">2</span><span class="cl-c">    <span class="kw">let</span> <span class="var">s1</span> = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);</span></div>
+            <div class="cl"><span class="cl-n">3</span><span class="cl-c">    <span class="kw">let</span> <span class="var">s2</span> = <span class="var">s1</span>;    <span class="cm">// move occurs here</span></span></div>
+            <div class="cl"><span class="cl-n">4</span><span class="cl-c"></span></div>
+            <div class="cl err-line" id="err-line"><span class="cl-n">5</span><span class="cl-c">    <span class="mac">println!</span>(<span class="str">"{}"</span>, <span class="sq" id="err-token">s1</span>); <span class="cm" id="err-comment" style="display:none"> // E0382</span></span></div>
+            <div class="cl"><span class="cl-n">6</span><span class="cl-c">}</span></div>
+          </div>
+
+          <div class="err-explain" id="err-explain">
+            <div class="ee-inner">
+              <div class="ee-hd">¿POR QUÉ EL ERROR?</div>
+              <p class="ee-p"><code>String</code> no implementa <code>Copy</code>. Cuando escribís <code>let s2 = s1</code>, la cadena pasa a ser propiedad de <code>s2</code> — <code>s1</code> queda inválido. Rust no permite tener dos variables que se crean dueñas del mismo heap.</p>
+              <p class="ee-p">Esto evita el <em>double free</em>: si ambas variables existieran al salir del scope, las dos intentarían liberar la misma memoria.</p>
+              <div class="ee-suggest">
+                <span class="ee-sl">SUGERENCIA</span>
+                <code>let s2 = s1.clone();</code>
+              </div>
+            </div>
+          </div>
+
+          <div class="output-panel">
+            <div class="op-bar">
+              <span class="op-tab act">salida</span>
+              <span class="op-tab">tests</span>
+            </div>
+            <div class="op-body" id="output-body">
+              <span style="color:var(--tm);font-size:11px">Hacé click en "Compilar" para ver el output del compilador.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right panel -->
+        <div class="lab-right">
+          <!-- Memory viz -->
+          <div class="lr-pane mem">
+            <div class="lr-head">MEMORIA</div>
+            <div class="mem-viz" id="mem-viz">
+              <div>
+                <div class="mem-section-label">STACK · main()</div>
+                <div class="mem-row">
+                  <div class="stack-frame">
+                    <div class="sf-title">
+                      <span>s1</span>
+                      <span class="sf-badge" id="s1-badge" style="display:none"></span>
+                    </div>
+                    <div class="sf-field">
+                      <span class="sf-k">ptr</span>
+                      <span class="sf-v ptr" id="s1-ptr">0x7f4a…</span>
+                    </div>
+                    <div class="sf-field">
+                      <span class="sf-k">len</span>
+                      <span class="sf-v" id="s1-len">5</span>
+                    </div>
+                    <div class="sf-field">
+                      <span class="sf-k">cap</span>
+                      <span class="sf-v" id="s1-cap">5</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div id="s2-mem-row" style="display:none">
+                <div class="mem-row">
+                  <div class="stack-frame">
+                    <div class="sf-title">
+                      <span>s2</span>
+                      <span class="sf-badge owner">OWNER</span>
+                    </div>
+                    <div class="sf-field">
+                      <span class="sf-k">ptr</span>
+                      <span class="sf-v ptr">0x7f4a…</span>
+                    </div>
+                    <div class="sf-field">
+                      <span class="sf-k">len</span>
+                      <span class="sf-v">5</span>
+                    </div>
+                    <div class="sf-field">
+                      <span class="sf-k">cap</span>
+                      <span class="sf-v">5</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div id="heap-section" style="display:none">
+                <div class="mem-section-label" style="margin-top:4px">HEAP</div>
+                <div class="mem-row">
+                  <div class="heap-block active-owner">
+                    <div class="hb-title">0x7f4a · len:5 · cap:5</div>
+                    <div class="hb-bytes">
+                      <div class="hb-byte">h</div>
+                      <div class="hb-byte">e</div>
+                      <div class="hb-byte">l</div>
+                      <div class="hb-byte">l</div>
+                      <div class="hb-byte">o</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div id="mem-initial-hint" style="padding:8px 0;font-size:11px;color:var(--tm)">
+                Compilá para ver el estado de la memoria después del move.
+              </div>
+            </div>
+          </div>
+
+          <!-- Portales -->
+          <div class="lr-pane portals">
+            <div class="lr-head">PORTALES</div>
+            <div class="lab-portal">
+              <div class="lp-track os">OS TRACK</div>
+              <div class="lp-desc">El stack frame que ves aquí es lo que el kernel guarda en un context switch.</div>
+              <div class="lp-path">→ OS B · Trap Handling · D1</div>
+            </div>
+            <div class="lab-portal">
+              <div class="lp-track comp">COMPILERS</div>
+              <div class="lp-desc">El borrow checker analiza exactamente este flujo en el CFG del compilador.</div>
+              <div class="lp-path">→ Compilers B · Semántica · D1</div>
+            </div>
+          </div>
+
+          <!-- Tests -->
+          <div class="lr-pane tests">
+            <div class="lr-head">TESTS</div>
+            <div class="test-row">
+              <div class="test-ic">
+                <svg width="12" height="12" viewBox="0 0 12 12" id="test1-ic">
+                  <circle cx="6" cy="6" r="5" fill="none" stroke="#484f58" stroke-width="1.5"/>
+                </svg>
+              </div>
+              <span class="test-name">test_move_semantics</span>
+              <span class="test-st pend" id="test1-st">PENDIENTE</span>
+            </div>
+            <div class="test-row">
+              <div class="test-ic">
+                <svg width="12" height="12" viewBox="0 0 12 12">
+                  <circle cx="6" cy="6" r="5" fill="none" stroke="#484f58" stroke-width="1.5"/>
+                </svg>
+              </div>
+              <span class="test-name">test_clone_semantics</span>
+              <span class="test-st pend">PENDIENTE</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ CUADERNO BOTTOM BAR (fixed, shown only in cuaderno view) ══════════ -->
+<div id="cn-bar">
+  <span>LB4</span><span class="cn-bsep">·</span>
+  <span>OWNERSHIP</span><span class="cn-bsep">·</span>
+  <span>EN CURSO</span><span class="cn-bsep">·</span>
+  <span>2 / 7 PASOS</span>
+  <button class="cn-bnext" onclick="goView('bosque')">SIGUIENTE: LB5 →</button>
+</div>
+
+<!-- ══════════ VIEW 5 — CUADERNO DE CAMPO ══════════ -->
+<div class="view" id="v-cuaderno">
+  <div class="cuaderno-inner">
+
+    <!-- Header -->
+    <div class="cn-chapter">CAPÍTULO 10 · Rust Core / C2 · Ownership</div>
+    <h1 class="cn-title">El gran <em>descubrimiento</em></h1>
+    <p class="cn-lede">Rust hace algo que ningún lenguaje mainstream hace: transfiere la propiedad de los datos en lugar de copiarlos o referenciarlos por defecto. Esa decisión cambia lo que el compilador puede garantizar — y lo que puede rechazar.</p>
+    <div class="cn-meta">
+      <div class="cn-mi">TIPO <b>LAB</b></div>
+      <div class="cn-mi">TIEMPO <b>25 MIN</b></div>
+      <div class="cn-mi">ESTADO <b>EN CURSO</b></div>
+      <div class="cn-mi">AVANCE <b>2 / 7 PASOS</b></div>
+    </div>
+
+    <!-- §4.1 -->
+    <div class="cn-sec">
+      <div class="cn-sl">§ 4.1</div>
+      <h2 class="cn-st">El código que <em>rompe</em></h2>
+      <p class="cn-p">Antes de ver qué hace Rust, hay que ver qué rompe. El programa más simple para demostrar ownership no hace nada misterioso: crea una <code>String</code>, la asigna a otra variable, y trata de usar la primera.</p>
+      <p class="cn-p">El compilador lo rechaza. ¿Por qué? La respuesta está en lo que <code>String</code> representa en memoria — no un valor, sino una <strong>promesa de liberación</strong>.</p>
+
+      <div class="cn-cw">
+        <div class="cn-ch">
+          <span class="cn-cfn">src/main.rs</span>
+          <button class="cn-cbtn" id="cn-compile-btn" onclick="cnCompile()">COMPILAR</button>
+        </div>
+        <div class="cn-cbody" id="cn-code">fn main() {
+    let s1 = String::from("forja");
+    let s2 = s1;
+
+    println!("{}", s1);
+}</div>
+      </div>
+      <div class="cn-snav">
+        <button class="cn-sb" onclick="cnAdvanceStep(-1)">←</button>
+        <div class="cn-slbl" id="cn-slbl">paso 1 de 3 · El move</div>
+        <button class="cn-sb" onclick="cnAdvanceStep(1)">→</button>
+      </div>
+      <div class="cn-fig">Fig. 4.1 — el programa que todos los tutoriales de Rust muestran primero</div>
+
+      <div class="cn-errb" id="cn-errb" style="display:none">
+        <span class="cn-el head">error[E0382]: borrow of moved value: `s1`</span>
+        <span class="cn-el loc"> --> src/main.rs:5:20</span>
+        <span class="cn-el dim">  |</span>
+        <span class="cn-el code">2 |     let s1 = String::from("forja");</span>
+        <span class="cn-el dim">  |         <span style="color:#d29922">--</span> move occurs because `s1` has type `String`</span>
+        <span class="cn-el code">3 |     let s2 = s1;</span>
+        <span class="cn-el dim">  |              <span style="color:#d29922">--</span> value moved here</span>
+        <span class="cn-el code">5 |     println!("{}", s1);</span>
+        <span class="cn-el dim">  |                    <span style="color:#f85149">^^</span> value borrowed here after move</span>
+        <span class="cn-el hint">help: consider cloning the value: `s1.clone()`</span>
+      </div>
+    </div>
+
+    <!-- §4.2 -->
+    <div class="cn-sec">
+      <div class="cn-sl">§ 4.2</div>
+      <h2 class="cn-st">La <em>memoria</em>, observada</h2>
+      <p class="cn-p">Una <code>String</code> en el stack es tres palabras: un puntero al heap, una longitud, y una capacidad. Lo que se mueve cuando escribís <code>let s2 = s1</code> no son los bytes del string — son esas tres palabras del stack. El heap no se toca.</p>
+      <p class="cn-p">Rust invalida <code>s1</code> en el compilador. No en runtime. No hay instrucción extra — solo una regla que el compilador aplica sobre el grafo de flujo de control.</p>
+
+      <div class="cn-memgrid">
+        <div>
+          <div class="cn-mcl">STACK · main()</div>
+          <div class="cn-mframe">
+            <div class="cn-mft">
+              <span>s1</span>
+              <span class="cn-mbadge moved" id="cn-s1-badge" style="display:none">MOVED</span>
+            </div>
+            <div class="cn-mfield">
+              <span class="cn-mk">ptr</span>
+              <span class="cn-mv ptr" id="cn-s1-ptr">0x7f4a…</span>
+            </div>
+            <div class="cn-mfield">
+              <span class="cn-mk">len</span>
+              <span class="cn-mv" id="cn-s1-len">5</span>
+            </div>
+            <div class="cn-mfield">
+              <span class="cn-mk">cap</span>
+              <span class="cn-mv" id="cn-s1-cap">5</span>
+            </div>
+          </div>
+          <div class="cn-mframe" id="cn-s2-frame" style="display:none">
+            <div class="cn-mft">
+              <span>s2</span>
+              <span class="cn-mbadge owner">OWNER</span>
+            </div>
+            <div class="cn-mfield">
+              <span class="cn-mk">ptr</span>
+              <span class="cn-mv ptr">0x7f4a…</span>
+            </div>
+            <div class="cn-mfield">
+              <span class="cn-mk">len</span>
+              <span class="cn-mv">5</span>
+            </div>
+            <div class="cn-mfield">
+              <span class="cn-mk">cap</span>
+              <span class="cn-mv">5</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="cn-mcl">HEAP</div>
+          <div class="cn-hframe">
+            <div class="cn-hft">0x7f4a · len:5 · cap:5</div>
+            <div class="cn-hbytes" id="cn-hbytes">
+              <div class="cn-hbyte" style="color:#c8bfb4">·</div>
+              <div class="cn-hbyte" style="color:#c8bfb4">·</div>
+              <div class="cn-hbyte" style="color:#c8bfb4">·</div>
+              <div class="cn-hbyte" style="color:#c8bfb4">·</div>
+              <div class="cn-hbyte" style="color:#c8bfb4">·</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cn-fig">Fig. 4.2 — estado de memoria después de <code>let s2 = s1</code> · compilá arriba para verlo</div>
+
+      <div class="cn-callout">
+        <div class="cn-c-mark">!</div>
+        <div class="cn-c-text">Los campos de <code>s1</code> no desaparecen del stack. Siguen ahí físicamente — el compilador simplemente los marca como <em>inválidos</em> y rechaza cualquier uso posterior. Sin overhead en runtime.</div>
+      </div>
+    </div>
+
+    <!-- §4.3 -->
+    <div class="cn-sec">
+      <div class="cn-sl">§ 4.3</div>
+      <h2 class="cn-st">El error, en sus <em>palabras</em></h2>
+      <p class="cn-p">El mensaje de error de Rust es inusualmente preciso. No dice "variable no existe". Dice exactamente qué pasó — en qué línea ocurrió el move, dónde intentaste usar el valor movido, y qué podés hacer.</p>
+      <p class="cn-p">Leer los errores del compilador de Rust es una habilidad separada. <strong>E0382</strong> es el primero que todos encuentran, y es el mejor diseñado: la causa, la consecuencia, y la sugerencia están en el mismo mensaje.</p>
+
+      <div class="cn-callout">
+        <div class="cn-c-mark">E</div>
+        <div class="cn-c-text"><strong>E0382</strong> — "borrow of moved value". La solución sugerida (<code>s1.clone()</code>) es válida cuando necesitás dos copias independientes. Pero clonar tiene costo: copia todos los bytes del heap. Avanzá al paso 3 para ver la alternativa sin costo: el borrow.</div>
+      </div>
+    </div>
+
+    <!-- Pull quote -->
+    <div class="cn-pq">
+      <div class="cn-pqt">"Rust no te impide hacer cosas peligrosas porque no confía en vos. Te las impide porque encontró una forma de garantizar seguridad sin ningún costo en runtime."</div>
+      <div class="cn-pqa">— Programming Rust, Blandy · Orendorff · Tindall</div>
+    </div>
+
+    <!-- Closing question -->
+    <div class="cn-closing">
+      <div class="cn-qmark">¿</div>
+      <div class="cn-qtitle">¿Por qué así?</div>
+      <div class="cn-qprompt">¿Por qué Rust eligió mover la propiedad en lugar de copiar implícitamente, usar reference counting, o garbage collection? ¿Qué haría cada alternativa en un contexto de sistema — en términos de seguridad, performance, y lo que el compilador puede y no puede verificar?</div>
+      <div class="cn-qnote">No hay respuesta correcta. Tu razonamiento queda guardado y va a aparecer la próxima vez que pases por aquí.</div>
+      <textarea class="cn-qta" id="cn-qta" placeholder="Escribí tu respuesta acá..."></textarea>
+      <button class="cn-qbtn" onclick="cnToggleAnswer()">ANOTAR RESPUESTA</button>
+    </div>
+
+    <!-- Portals -->
+    <div class="cn-portals">
+      <div class="cn-ptitle">Desde aquí, el mapa se abre.</div>
+      <div class="cn-plead">Ownership no es solo una restricción de Rust. Es la solución a un problema que existe desde que los lenguajes existen. Estos son los lugares donde ese mismo problema aparece de otra forma.</div>
+      <div class="cn-pentry" onclick="goView('bosque')">
+        <div class="cn-pnum">i.</div>
+        <div class="cn-pbody">
+          <div class="cn-ptk os">OS TRACK</div>
+          <div class="cn-pname">Trap Handling y context switch</div>
+          <div class="cn-pdesc">El stack frame que acabás de ver es exactamente lo que el kernel guarda cuando hay un interrupt. La misma memoria, otra abstracción.</div>
+        </div>
+        <div class="cn-parrow">→</div>
+      </div>
+      <div class="cn-pentry" onclick="goView('bosque')">
+        <div class="cn-pnum">ii.</div>
+        <div class="cn-pbody">
+          <div class="cn-ptk comp">COMPILERS TRACK</div>
+          <div class="cn-pname">Análisis semántico y el CFG</div>
+          <div class="cn-pdesc">El borrow checker es un análisis de flujo de control sobre el CFG. Tu compilador va a necesitar construir exactamente ese grafo para detectar variables no inicializadas.</div>
+        </div>
+        <div class="cn-parrow">→</div>
+      </div>
+      <div class="cn-pentry" onclick="goView('bosque')">
+        <div class="cn-pnum">iii.</div>
+        <div class="cn-pbody">
+          <div class="cn-ptk proj">PROJECT</div>
+          <div class="cn-pname">Implementá tu propio <code>Box&lt;T&gt;</code></div>
+          <div class="cn-pdesc">Cuando terminés C3, este project te pide que implementes el heap allocation que Rust esconde detrás de <code>Box</code>. El ownership que aprendiste aquí es el prerequisito directo.</div>
+        </div>
+        <div class="cn-parrow">→</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── State ──
+let currentView = 'bosque';
+let currentStep = 3;
+const totalSteps = 5;
+let compiled = false;
+
+const stepLabels = [
+  'paso 1 de 5 · Antes de arrancar',
+  'paso 2 de 5 · ¿Qué hace String::from?',
+  'paso 3 de 5 · ¿Qué pasa cuando asignamos?',
+  'paso 4 de 5 · La solución: clone()',
+  'paso 5 de 5 · ¿Cuándo NO clonar?',
+];
+
+// ── Navigation ──
+function goView(name) {
+  document.querySelectorAll('.tbs').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.getElementById('tbs-' + name).classList.add('active');
+  document.getElementById('v-' + name).classList.add('active');
+  currentView = name;
+  const cnbar = document.getElementById('cn-bar');
+  if (name === 'cuaderno') cnbar.classList.add('show');
+  else cnbar.classList.remove('show');
+}
+
+// ── Step navigation ──
+function updateStepUI() {
+  const lbl = stepLabels[currentStep - 1];
+  document.getElementById('step-label').textContent = lbl;
+  document.getElementById('inner-step-lbl').textContent = lbl;
+
+  // update dots
+  const dots = document.querySelectorAll('.sdot');
+  dots.forEach((d, i) => {
+    d.classList.remove('done', 'act');
+    if (i < currentStep - 1) d.classList.add('done');
+    else if (i === currentStep - 1) d.classList.add('act');
+  });
+
+  // reset compile state when changing step
+  if (compiled) resetCompile();
+}
+
+function prevStep() {
+  if (currentStep > 1) { currentStep--; updateStepUI(); }
+}
+
+function nextStep() {
+  if (currentStep < totalSteps) { currentStep++; updateStepUI(); }
+}
+
+// ── Compile interaction ──
+function runCompile() {
+  if (compiled) return;
+  compiled = true;
+
+  // Show error annotation
+  document.getElementById('err-comment').style.display = '';
+  document.getElementById('err-explain').classList.add('show');
+
+  // Update s1 badge
+  const s1badge = document.getElementById('s1-badge');
+  s1badge.textContent = 'MOVED';
+  s1badge.className = 'sf-badge moved';
+  s1badge.style.display = '';
+
+  // Strike through s1 fields
+  document.getElementById('s1-ptr').classList.add('cross');
+  document.getElementById('s1-len').classList.add('cross');
+  document.getElementById('s1-cap').classList.add('cross');
+
+  // Show s2 and heap
+  document.getElementById('s2-mem-row').style.display = '';
+  document.getElementById('heap-section').style.display = '';
+  document.getElementById('mem-initial-hint').style.display = 'none';
+
+  // Update test
+  document.getElementById('test1-st').textContent = 'FALLO';
+  document.getElementById('test1-st').className = 'test-st fail';
+  document.getElementById('test1-ic').innerHTML =
+    '<circle cx="6" cy="6" r="5" fill="none" stroke="#f85149" stroke-width="1.5"/>' +
+    '<line x1="4" y1="4" x2="8" y2="8" stroke="#f85149" stroke-width="1.5"/>' +
+    '<line x1="8" y1="4" x2="4" y2="8" stroke="#f85149" stroke-width="1.5"/>';
+
+  // Stream output
+  const out = document.getElementById('output-body');
+  out.innerHTML = '';
+  const lines = [
+    { t: 0,   html: '<span class="oc"><span class="loc">   Compiling</span> forja_lab v0.1.0</span>' },
+    { t: 400, html: '<span class="oc">error[E0382]: borrow of moved value: `s1`</span>' },
+    { t: 450, html: '<span class="oc"><span class="loc"> --&gt; src/main.rs:5:20</span></span>' },
+    { t: 480, html: '<span class="oc"><span class="dim">  |</span></span>' },
+    { t: 500, html: '<span class="oc"><span class="dim">2 |</span>     let s1 = String::from("hello");</span>' },
+    { t: 520, html: '<span class="oc"><span class="dim">  |</span>         <span class="ref">--</span> move occurs because `s1` has type `String`</span>' },
+    { t: 540, html: '<span class="oc"><span class="dim">3 |</span>     let s2 = s1;</span>' },
+    { t: 560, html: '<span class="oc"><span class="dim">  |</span>              <span class="ref">--</span> value moved here</span>' },
+    { t: 580, html: '<span class="oc"><span class="dim">5 |</span>     println!("{}", s1);</span>' },
+    { t: 600, html: '<span class="oc"><span class="dim">  |</span>                    <span class="ref">^^</span> value borrowed here after move</span>' },
+    { t: 650, html: '<span class="oc"><span class="dim">  |</span></span>' },
+    { t: 700, html: '<span class="oc"><span class="ok">help</span>: consider cloning the value if the performance cost is acceptable</span>' },
+    { t: 720, html: '<span class="oc"><span class="dim">3 |</span>     let s2 = s1<span class="ok">.clone()</span>;</span>' },
+    { t: 800, html: '<span class="oc">error: could not compile `forja_lab` due to 1 previous error</span>' },
+  ];
+  lines.forEach(({ t, html }) => {
+    setTimeout(() => {
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      out.appendChild(div);
+      out.scrollTop = out.scrollHeight;
+    }, t);
+  });
+}
+
+function resetCompile() {
+  compiled = false;
+  document.getElementById('err-comment').style.display = 'none';
+  document.getElementById('err-explain').classList.remove('show');
+  const s1badge = document.getElementById('s1-badge');
+  s1badge.style.display = 'none';
+  document.getElementById('s1-ptr').classList.remove('cross');
+  document.getElementById('s1-len').classList.remove('cross');
+  document.getElementById('s1-cap').classList.remove('cross');
+  document.getElementById('s2-mem-row').style.display = 'none';
+  document.getElementById('heap-section').style.display = 'none';
+  document.getElementById('mem-initial-hint').style.display = '';
+  document.getElementById('test1-st').textContent = 'PENDIENTE';
+  document.getElementById('test1-st').className = 'test-st pend';
+  document.getElementById('test1-ic').innerHTML =
+    '<circle cx="6" cy="6" r="5" fill="none" stroke="#484f58" stroke-width="1.5"/>';
+  document.getElementById('output-body').innerHTML =
+    '<span style="color:var(--tm);font-size:11px">Hacé click en "Compilar" para ver el output del compilador.</span>';
+}
+
+// ── Cuaderno de Campo ──
+let cnCurrentStep = 1;
+let cnCompiled = false;
+
+const cnCodeSteps = [
+  `fn main() {\n    let s1 = String::from("forja");\n    let s2 = s1;\n\n    println!("{}", s1);\n}`,
+  `fn main() {\n    let s1 = String::from("forja");\n    let s2 = s1.clone(); // deep copy del heap\n\n    println!("{} {}", s1, s2);\n}`,
+  `fn main() {\n    let s1 = String::from("forja");\n    let len = calcular_len(&s1); // borrow: no move\n\n    println!("{} tiene {} bytes", s1, len);\n}\n\nfn calcular_len(s: &String) -> usize {\n    s.len()\n}`,
+];
+
+const cnStepLabels = [
+  'paso 1 de 3 · El move',
+  'paso 2 de 3 · La solución: clone()',
+  'paso 3 de 3 · Alternativa: borrow',
+];
+
+function cnUpdateStep() {
+  document.getElementById('cn-code').textContent = cnCodeSteps[cnCurrentStep - 1];
+  document.getElementById('cn-slbl').textContent = cnStepLabels[cnCurrentStep - 1];
+  const btn = document.getElementById('cn-compile-btn');
+  btn.style.opacity = cnCurrentStep === 1 ? '1' : '0.35';
+  btn.style.pointerEvents = cnCurrentStep === 1 ? '' : 'none';
+  if (cnCompiled) cnResetCompile();
+}
+
+function cnAdvanceStep(dir) {
+  cnCurrentStep = Math.max(1, Math.min(3, cnCurrentStep + dir));
+  cnUpdateStep();
+}
+
+function cnCompile() {
+  if (cnCompiled || cnCurrentStep !== 1) return;
+  cnCompiled = true;
+
+  document.getElementById('cn-errb').style.display = '';
+
+  const s1badge = document.getElementById('cn-s1-badge');
+  s1badge.style.display = '';
+  document.getElementById('cn-s1-ptr').classList.add('cross');
+  document.getElementById('cn-s1-len').classList.add('cross');
+  document.getElementById('cn-s1-cap').classList.add('cross');
+  document.getElementById('cn-s2-frame').style.display = '';
+
+  const bytes = ['f','o','r','j','a'];
+  document.getElementById('cn-hbytes').innerHTML =
+    bytes.map(b => `<div class="cn-hbyte">${b}</div>`).join('');
+}
+
+function cnResetCompile() {
+  cnCompiled = false;
+  document.getElementById('cn-errb').style.display = 'none';
+  document.getElementById('cn-s1-badge').style.display = 'none';
+  document.getElementById('cn-s1-ptr').classList.remove('cross');
+  document.getElementById('cn-s1-len').classList.remove('cross');
+  document.getElementById('cn-s1-cap').classList.remove('cross');
+  document.getElementById('cn-s2-frame').style.display = 'none';
+  document.getElementById('cn-hbytes').innerHTML =
+    '<div class="cn-hbyte" style="color:#c8bfb4">·</div>'.repeat(5);
+}
+
+function cnToggleAnswer() {
+  const ta = document.getElementById('cn-qta');
+  ta.classList.toggle('show');
+  if (ta.classList.contains('show')) ta.focus();
+}
+
+// init
+updateStepUI();
+cnUpdateStep();
+</script>
+</body>
+</html>

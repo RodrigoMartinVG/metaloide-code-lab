@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forja | Curriculum Map</title>
+    <style>
+        :root {
+            --bg-dark: #0d1117;
+            --bg-panel: #161b22;
+            --border: #30363d;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent: #58a6ff;
+            --success: #3fb950;
+            --locked: #484f58;
+            --font-mono: "SF Mono", "Fira Code", monospace;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Header / Dashboard --- */
+        header {
+            height: 80px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            background-color: var(--bg-panel);
+        }
+
+        .brand {
+            font-size: 1.5rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            color: #fff;
+        }
+
+        .user-stats {
+            display: flex;
+            gap: 30px;
+        }
+
+        .stat-item {
+            text-align: right;
+        }
+
+        .stat-value {
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+        }
+
+        /* --- Layout --- */
+        main {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- Map Area (The DAG) --- */
+        .map-container {
+            flex: 1;
+            position: relative;
+            background-image: radial-gradient(var(--border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            overflow: auto;
+            padding: 60px;
+            display: grid;
+            grid-template-columns: repeat(3, 300px);
+            gap: 80px 40px;
+            justify-content: center;
+            align-content: start;
+        }
+
+        .column-header {
+            grid-row: 1;
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        .node {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            z-index: 2;
+        }
+
+        .node:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .node.completed { border-top: 4px solid var(--success); }
+        .node.active { border-top: 4px solid var(--accent); border-color: var(--accent); background: rgba(88, 166, 255, 0.05); }
+        .node.locked { opacity: 0.6; cursor: not-allowed; grayscale: 1; }
+
+        .node-tag {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .node-title {
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
+        .node-desc {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            line-height: 1.4;
+        }
+
+        /* --- Side Inspector --- */
+        .inspector {
+            width: 350px;
+            border-left: 1px solid var(--border);
+            background-color: var(--bg-panel);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .inspector-title { font-size: 1.2rem; font-weight: bold; }
+        .inspector-section { border-top: 1px solid var(--border); padding-top: 15px; }
+        .section-label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px; }
+        
+        .req-list { list-style: none; font-size: 0.85rem; color: var(--text-dim); }
+        .req-list li::before { content: "•"; color: var(--accent); margin-right: 8px; }
+
+        .btn-launch {
+            margin-top: auto;
+            background-color: var(--accent);
+            color: #000;
+            border: none;
+            padding: 15px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-family: var(--font-mono);
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .btn-launch:hover { opacity: 0.9; }
+
+        /* Fake connections using CSS lines (simplified for demo) */
+        .connector-v {
+            position: absolute;
+            width: 2px;
+            background: var(--border);
+            z-index: 1;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">FORJA_SYSTEMS</div>
+        <div class="user-stats">
+            <div class="stat-item">
+                <span class="stat-value">12 / 48</span>
+                <span class="stat-label">Nodos Conquistados</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">0.82ms</span>
+                <span class="stat-label">Avg. Latency</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">4</span>
+                <span class="stat-label">Iron Badges</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="map-container">
+            <div class="column-header">Pilar I: Rust Core</div>
+            <div class="column-header">Pilar II: Compilers</div>
+            <div class="column-header">Pilar III: OS Kernel</div>
+
+            <div class="node completed" onclick="inspect('rust-1')">
+                <div class="node-tag">RUST-01</div>
+                <div class="node-title">Memory & Ownership</div>
+                <div class="node-desc">Stack vs Heap, Copy vs Move, and the Borrow Checker.</div>
+            </div>
+
+            <div class="node completed" onclick="inspect('comp-1')">
+                <div class="node-tag">COMP-01</div>
+                <div class="node-title">Lexical Analysis</div>
+                <div class="node-desc">Converting raw string input into a stream of tokens.</div>
+            </div>
+
+            <div class="node active" onclick="inspect('os-1')">
+                <div class="node-tag">OS-01</div>
+                <div class="node-title">Bootloader basics</div>
+                <div class="node-desc">Entering 64-bit long mode and minimal kernel init.</div>
+            </div>
+
+            <div class="node completed" onclick="inspect('rust-2')">
+                <div class="node-tag">RUST-02</div>
+                <div class="node-title">Lifetimes & Traits</div>
+                <div class="node-desc">Managing complex references and polymorphism.</div>
+            </div>
+
+            <div class="node active" onclick="inspect('comp-2')">
+                <div class="node-tag">COMP-02</div>
+                <div class="node-title">Syntax Trees (AST)</div>
+                <div class="node-desc">Building recursive descent parsers for expressions.</div>
+            </div>
+
+            <div class="node locked">
+                <div class="node-tag">OS-02</div>
+                <div class="node-title">Memory Management</div>
+                <div class="node-desc">Paging, frame allocation, and virtual memory.</div>
+            </div>
+
+            <div class="node active" onclick="inspect('rust-3')">
+                <div class="node-tag">RUST-03</div>
+                <div class="node-title">Unsafe & FFI</div>
+                <div class="node-desc">Bypassing the checker to talk to hardware or C.</div>
+            </div>
+
+            <div class="node locked">
+                <div class="node-tag">COMP-03</div>
+                <div class="node-title">Semantic Analysis</div>
+                <div class="node-desc">Type checking and symbol table construction.</div>
+            </div>
+
+            <div class="node locked">
+                <div class="node-tag">OS-03</div>
+                <div class="node-title">Scheduling</div>
+                <div class="node-desc">Implementing a round-robin task scheduler.</div>
+            </div>
+        </div>
+
+        <aside class="inspector" id="inspector">
+            <div id="inspector-content">
+                <div class="inspector-title">Selecciona un nodo</div>
+                <p class="node-desc" style="margin-top:10px">Haz clic en un módulo del mapa para ver los detalles del desafío y los requisitos técnicos.</p>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        const data = {
+            'comp-2': {
+                tag: 'COMP-02',
+                title: 'Syntax Trees (AST)',
+                desc: 'En este lab implementarás un parser de descenso recursivo. El objetivo es transformar una lista plana de tokens en una estructura jerárquica que represente la gramática de un lenguaje simplificado.',
+                reqs: ['Haber superado COMP-01 (Lexer)', 'Entender recursividad profunda', 'Conocimiento de Enums en Rust'],
+                bench: 'Correctitud > 99% | Latencia < 2ms'
+            },
+            'os-1': {
+                tag: 'OS-01',
+                title: 'Bootloader basics',
+                desc: 'Bienvenido al nivel más bajo. Aquí escribirás el código que toma el control justo después de que la BIOS/UEFI termina su trabajo. Configurarás los registros básicos y saltarás al modo protegido.',
+                reqs: ['Conocimiento básico de x86_64', 'Familiaridad con ensamblador (Inline ASM)'],
+                bench: 'Zero runtime overhead required'
+            },
+            'rust-3': {
+                tag: 'RUST-03',
+                title: 'Unsafe & FFI',
+                desc: 'Aprenderás cuándo y cómo romper las reglas. Implementarás un "Raw Pointer Wrapper" para interactuar con una librería de C externa sin comprometer la seguridad total del sistema.',
+                reqs: ['Memory & Ownership (Mastery)', 'Lifetimes (Mastery)'],
+                bench: 'No memory leaks (Checked with Valgrind/Miri)'
+            }
+        };
+
+        function inspect(id) {
+            const node = data[id];
+            const container = document.getElementById('inspector');
+            
+            if (!node) {
+                container.innerHTML = `<div class="inspector-title">Módulo bloqueado o completado</div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="node-tag">${node.tag}</div>
+                <div class="inspector-title">${node.title}</div>
+                <p class="node-desc">${node.desc}</p>
+                
+                <div class="inspector-section">
+                    <div class="section-label">Requisitos previos</div>
+                    <ul class="req-list">
+                        ${node.reqs.map(r => `<li>${r}</li>`).join('')}
+                    </ul>
+                </div>
+
+                <div class="inspector-section">
+                    <div class="section-label">Benchmark Goal</div>
+                    <div style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--success);">${node.bench}</div>
+                </div>
+
+                <button class="btn-launch">FORJAR SOLUCIÓN ></button>
+            `;
+        }
+    </script>
+</body>
+</html>

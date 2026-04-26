@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s http://localhost:5173/src/main.ts)",
+      "Bash(grep -n '`[a-zA-Z_&]' /c/Users/rodrigo/Documents/programming-labs/demo.html)",
+      "Bash(grep -v '^\\\\s*//')",
+      "Bash(node -e ' *)",
+      "Bash(node /c/Users/rodrigo/Documents/programming-labs/check_js.js)",
+      "Bash(node check_js.js)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\rodrigo\\.claude\\projects\\c--Users-rodrigo-Documents-programming-labs\\memory"
+    ]
+  }
+}

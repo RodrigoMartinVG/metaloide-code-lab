@@ -1,0 +1,73 @@
+:root {
+  /* Backgrounds */
+  --bg-base:     #0f1117;
+  --bg-surface:  #161b22;
+  --bg-elevated: #1c2128;
+
+  /* Borders */
+  --border:        #30363d;
+  --border-subtle: #21262d;
+
+  /* Text */
+  --text-primary:   #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted:     #484f58;
+
+  /* Accent — forge orange */
+  --accent:     #e05c1a;
+  --accent-dim: #7a3010;
+  --accent-glow:#ff7b35;
+
+  /* Semantic */
+  --success: #3fb950;
+  --warning: #d29922;
+  --error:   #f85149;
+  --info:    #388bfd;
+
+  /* Pillar colors */
+  --pillar-rust:      #e05c1a;
+  --pillar-compilers: #58a6ff;
+  --pillar-os:        #bc8cff;
+
+  /* Node states */
+  --node-available:  #e6edf3;
+  --node-progress:   #e05c1a;
+  --node-completed:  #3fb950;
+  --node-mastered:   #f0c040;
+  --node-locked:     #484f58;
+
+  /* Typography */
+  --font-prose: 'Inter', system-ui, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Spacing */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  32px;
+  --space-2xl: 48px;
+
+  /* Layout */
+  --topbar-height: 48px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-prose);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  height: 100%;
+}

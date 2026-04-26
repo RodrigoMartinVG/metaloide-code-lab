@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Forja — Demo</title>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #111821;
+      --panel-2: #0f151d;
+      --text: #e7edf5;
+      --muted: #93a4b7;
+      --line: #223142;
+      --accent: #8dd6ff;
+      --accent-2: #7cf2b0;
+      --warn: #ffcf6e;
+      --bad: #ff7d7d;
+      --good: #76e3a0;
+      --shadow: 0 18px 50px rgba(0,0,0,.35);
+      --radius: 22px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background:
+        radial-gradient(circle at top, rgba(141,214,255,.08), transparent 24%),
+        radial-gradient(circle at 80% 10%, rgba(124,242,176,.08), transparent 18%),
+        linear-gradient(180deg, #090c10 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--line);
+      background: rgba(9,12,16,.72);
+      backdrop-filter: blur(14px);
+      padding: 24px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .brand {
+      padding: 14px 14px 10px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      box-shadow: var(--shadow);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .brand p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: .92rem;
+      line-height: 1.5;
+    }
+
+    .section-title {
+      font-size: .76rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 4px 4px 0;
+    }
+
+    .nav {
+      display: grid;
+      gap: 10px;
+    }
+
+    .nav button, .chip, .ghost-btn, .primary-btn {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,.02);
+      color: var(--text);
+      font: inherit;
+    }
+
+    .nav button {
+      text-align: left;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: .18s ease;
+    }
+    .nav button:hover { transform: translateY(-1px); border-color: rgba(141,214,255,.5); }
+    .nav button.active {
+      background: linear-gradient(180deg, rgba(141,214,255,.14), rgba(141,214,255,.06));
+      border-color: rgba(141,214,255,.55);
+      box-shadow: 0 0 0 1px rgba(141,214,255,.08) inset;
+    }
+
+    .nav .meta {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+
+    .sidebar-card {
+      padding: 14px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--line);
+    }
+
+    .sidebar-card h3 {
+      margin: 0 0 10px;
+      font-size: .95rem;
+    }
+
+    .progress {
+      height: 10px;
+      background: #0a1016;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .progress > span {
+      display: block;
+      height: 100%;
+      width: 56%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .stat {
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255,255,255,.02);
+    }
+    .stat strong { display: block; font-size: 1.05rem; }
+    .stat span { color: var(--muted); font-size: .78rem; }
+
+    .content {
+      padding: 24px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 18px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .search {
+      flex: 1;
+      min-width: 280px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.03);
+    }
+    .search input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font-size: 1rem;
+    }
+    .search input::placeholder { color: #6f8194; }
+
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .ghost-btn, .primary-btn {
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: .18s ease;
+    }
+    .ghost-btn:hover, .primary-btn:hover { transform: translateY(-1px); }
+    .primary-btn {
+      background: linear-gradient(180deg, rgba(141,214,255,.18), rgba(124,242,176,.12));
+      border-color: rgba(141,214,255,.4);
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(135deg, rgba(141,214,255,.1), rgba(124,242,176,.05)),
+        rgba(255,255,255,.02);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 1.3fr .9fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .hero h2 {
+      margin: 0;
+      font-size: clamp(1.8rem, 3vw, 3rem);
+      line-height: 1.05;
+    }
+
+    .hero p {
+      color: var(--muted);
+      line-height: 1.65;
+      max-width: 66ch;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .chip {
+      padding: 9px 12px;
+      color: var(--muted);
+      font-size: .88rem;
+    }
+
+    .hero-panel {
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: rgba(6,10,14,.7);
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .hero-panel .card {
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--line);
+    }
+    .hero-panel .card h4, .module-card h4 { margin: 0 0 8px; }
+    .hero-panel .card p, .module-card p { margin: 0; color: var(--muted); line-height: 1.55; }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 18px;
+      min-height: 0;
+    }
+
+    .module-card, .editor-card, .inspector-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.02);
+      box-shadow: var(--shadow);
+    }
+
+    .module-card { padding: 18px; }
+    .module-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .badge {
+      font-family: var(--mono);
+      font-size: .72rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: rgba(255,255,255,.02);
+    }
+
+    .module-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .module-item {
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,.16);
+      cursor: pointer;
+      transition: .18s ease;
+    }
+    .module-item:hover { border-color: rgba(124,242,176,.4); transform: translateY(-1px); }
+    .module-item.active {
+      background: linear-gradient(180deg, rgba(124,242,176,.11), rgba(141,214,255,.06));
+      border-color: rgba(124,242,176,.42);
+    }
+    .module-item .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .module-item .row strong { font-size: 1rem; }
+    .module-item .row span { color: var(--muted); font-size: .85rem; font-family: var(--mono); }
+    .module-item .tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .tag {
+      font-size: .76rem;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 8px;
+      background: rgba(255,255,255,.02);
+    }
+
+    .editor-card {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow: hidden;
+    }
+    .editor-top, .editor-bottom {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.02);
+    }
+    .editor-bottom {
+      border-bottom: 0;
+      border-top: 1px solid var(--line);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .editor-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .editor-title h3 { margin: 0; font-size: 1.05rem; }
+    .editor-title .sub { color: var(--muted); font-size: .88rem; }
+
+    textarea {
+      width: 100%;
+      min-height: 340px;
+      resize: vertical;
+      border: 0;
+      outline: 0;
+      background: #071017;
+      color: #d9f3ff;
+      padding: 18px;
+      font: 14px/1.6 var(--mono);
+      tab-size: 2;
+      caret-color: var(--accent);
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      width: 100%;
+    }
+
+    .status {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--line);
+    }
+    .status small { color: var(--muted); display: block; margin-bottom: 2px; }
+    .status strong { font-family: var(--mono); font-size: .95rem; }
+
+    .inspector-card {
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 10px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,.02);
+    }
+    .num {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: rgba(141,214,255,.12);
+      border: 1px solid rgba(141,214,255,.35);
+      color: var(--text);
+      font-family: var(--mono);
+    }
+    .step h5 { margin: 0 0 4px; font-size: .95rem; }
+    .step p { margin: 0; color: var(--muted); line-height: 1.5; font-size: .9rem; }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: .85rem;
+      line-height: 1.6;
+    }
+
+    .section {
+      display: none;
+    }
+    .section.active { display: grid; gap: 18px; }
+
+    @media (max-width: 1100px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
+      .hero, .workspace { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 720px) {
+      .content { padding: 16px; }
+      .sidebar { padding: 16px; }
+      .status-grid, .stat-grid { grid-template-columns: 1fr; }
+      textarea { min-height: 280px; }
+      .topbar { align-items: stretch; }
+      .top-actions, .search { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>Forja</h1>
+        <p>Aprendizaje técnico con laboratorios, proyectos, restricciones y progreso real.</p>
+      </div>
+
+      <div>
+        <div class="section-title">Navegación</div>
+        <div class="nav" id="nav"></div>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>Progreso global</h3>
+        <div class="progress"><span></span></div>
+        <div class="footer-note">56% completado · 12 labs aprobados · 4 proyectos en curso</div>
+        <div class="stat-grid">
+          <div class="stat"><strong>84</strong><span>Corrección</span></div>
+          <div class="stat"><strong>71</strong><span>Profundidad</span></div>
+          <div class="stat"><strong>63</strong><span>Autonomía</span></div>
+          <div class="stat"><strong>91</strong><span>Consistencia</span></div>
+        </div>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>Contexto actual</h3>
+        <div class="footer-note" id="contextText">Lab de Rust · Borrow checker · nivel intermedio</div>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <div class="search">
+          <span style="color:var(--muted);font-family:var(--mono)">/</span>
+          <input type="text" placeholder="Buscar módulos, labs, proyectos o conceptos..." />
+        </div>
+        <div class="top-actions">
+          <button class="ghost-btn">Mapa</button>
+          <button class="ghost-btn">Cuaderno</button>
+          <button class="primary-btn">Continuar</button>
+        </div>
+      </div>
+
+      <section class="hero">
+        <div>
+          <div class="badge">Demo interactiva</div>
+          <h2>Una plataforma técnica que no disimula la dificultad.</h2>
+          <p>
+            Esta maqueta muestra una experiencia más realista para Forja: navegación por contexto,
+            módulos con dependencias, un editor con estado visible y un panel de inspección que cambia
+            según el tipo de actividad.
+          </p>
+          <div class="pill-row">
+            <span class="chip">Rust</span>
+            <span class="chip">Compilers</span>
+            <span class="chip">Operating Systems</span>
+            <span class="chip">Labs</span>
+            <span class="chip">Projects</span>
+            <span class="chip">Inspección</span>
+          </div>
+        </div>
+        <div class="hero-panel">
+          <div class="card">
+            <h4>Flujo sugerido</h4>
+            <p>Diagnóstico → lab guiado → proyecto con restricciones → evaluación por métricas.</p>
+          </div>
+          <div class="card">
+            <h4>Regla central</h4>
+            <p>La ayuda debe bajar cuando sube el dominio, no al revés.</p>
+          </div>
+          <div class="card">
+            <h4>Estado vivo</h4>
+            <p>Errores, intentos, puntuación y desbloqueos aparecen como parte del sistema.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <div class="module-card">
+          <div class="module-head">
+            <div>
+              <div class="badge">Ruta activa</div>
+              <h3 style="margin:8px 0 0">Fundamentos de ownership</h3>
+            </div>
+            <div class="badge">3 dependencias</div>
+          </div>
+          <div class="module-list" id="moduleList"></div>
+        </div>
+
+        <div class="editor-card">
+          <div class="editor-top">
+            <div class="editor-title">
+              <h3 id="labTitle">Lab 01 · Préstamos y mutabilidad</h3>
+              <div class="sub" id="labMeta">Objetivo: detectar por qué un préstamo falla</div>
+            </div>
+          </div>
+          <textarea id="codeArea" spellcheck="false">fn main() {
+    let mut value = String::from("Forja");
+    let r1 = &value;
+    let r2 = &mut value;
+
+    println!("{}", r1);
+    println!("{}", r2);
+}</textarea>
+          <div class="editor-bottom">
+            <div class="status-grid">
+              <div class="status"><small>Corrección</small><strong id="score1">62 / 100</strong></div>
+              <div class="status"><small>Profundidad</small><strong id="score2">48 / 100</strong></div>
+              <div class="status"><small>Ayuda usada</small><strong id="score3">2 pistas</strong></div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="ghost-btn">Ver pista</button>
+              <button class="ghost-btn">Ejecutar</button>
+              <button class="primary-btn">Entregar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="inspector-card">
+        <div class="badge">Inspección de contexto</div>
+        <div class="timeline" id="timeline"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const sections = [
+      { id: 'rust', title: 'Rust', meta: 'Ownership · lifetimes · async', kind: 'Pilar' },
+      { id: 'compilers', title: 'Compilers', meta: 'Lexer · parser · IR · codegen', kind: 'Pilar' },
+      { id: 'os', title: 'Operating Systems', meta: 'Scheduling · memoria · syscalls', kind: 'Pilar' },
+      { id: 'lab', title: 'Lab en vivo', meta: 'Editor + inspección + pistas', kind: 'Modo' },
+      { id: 'project', title: 'Proyecto local', meta: 'Tests + restricciones + entregables', kind: 'Modo' }
+    ];
+
+    const modules = [
+      {
+        title: 'Diagnóstico inicial',
+        score: '87%',
+        desc: 'Evalúa nivel base y recomienda ruta según errores frecuentes y tiempo de resolución.',
+        tags: ['tests de nivel', 'ruta adaptativa']
+      },
+      {
+        title: 'Borrow checker visual',
+        score: '74%',
+        desc: 'Muestra préstamos activos, mutabilidad y causa exacta de cada error de compilación.',
+        tags: ['ownership', 'préstamos', 'traza']
+      },
+      {
+        title: 'Pipeline de compilación',
+        score: '61%',
+        desc: 'Convierte código fuente en etapas observables: tokens, AST, semántica e IR.',
+        tags: ['lexer', 'parser', 'IR']
+      },
+      {
+        title: 'Scheduler y memoria',
+        score: '53%',
+        desc: 'Simula decisiones del planificador, páginas, fallos de página y cambios de contexto.',
+        tags: ['SO', 'memoria', 'concurrencia']
+      }
+    ];
+
+    const timeline = [
+      {
+        title: 'Leer el contexto',
+        text: 'La UI explica qué está pasando, qué está permitido y qué criterio define el éxito.'
+      },
+      {
+        title: 'Explorar el modelo interno',
+        text: 'Cada click debe revelar estado: variables, procesos, tokens, referencias o páginas.'
+      },
+      {
+        title: 'Probar una hipótesis',
+        text: 'El usuario cambia una línea, reorganiza una regla o mueve un bloque y observa el efecto.'
+      },
+      {
+        title: 'Cerrar con evidencia',
+        text: 'El sistema muestra corrección, profundidad, autonomía y consistencia, no solo aprobado/reprobado.'
+      }
+    ];
+
+    const nav = document.getElementById('nav');
+    const moduleList = document.getElementById('moduleList');
+    const timelineEl = document.getElementById('timeline');
+    const labTitle = document.getElementById('labTitle');
+    const labMeta = document.getElementById('labMeta');
+    const contextText = document.getElementById('contextText');
+    const codeArea = document.getElementById('codeArea');
+    const score1 = document.getElementById('score1');
+    const score2 = document.getElementById('score2');
+    const score3 = document.getElementById('score3');
+
+    sections.forEach((s, i) => {
+      const btn = document.createElement('button');
+      btn.innerHTML = `${s.title}<span class="meta">${s.meta}</span>`;
+      if (i === 0) btn.classList.add('active');
+      btn.addEventListener('click', () => {
+        [...nav.children].forEach(n => n.classList.remove('active'));
+        btn.classList.add('active');
+        contextText.textContent = `${s.kind} · ${s.meta}`;
+        if (s.id === 'rust') {
+          labTitle.textContent = 'Lab 01 · Préstamos y mutabilidad';
+          labMeta.textContent = 'Objetivo: detectar por qué un préstamo falla';
+          codeArea.value = `fn main() {\n    let mut value = String::from("Forja");\n    let r1 = &value;\n    let r2 = &mut value;\n\n    println!("{}", r1);\n    println!("{}", r2);\n}`;
+          score1.textContent = '62 / 100';
+          score2.textContent = '48 / 100';
+          score3.textContent = '2 pistas';
+        }
+        if (s.id === 'compilers') {
+          labTitle.textContent = 'Lab 07 · Del lexer al AST';
+          labMeta.textContent = 'Objetivo: transformar texto en estructura sintáctica';
+          codeArea.value = `let tokens = lex(source);\nlet ast = parse(tokens);\nlet sem = analyze(ast);\nlet ir = lower(sem);`;
+          score1.textContent = '79 / 100';
+          score2.textContent = '66 / 100';
+          score3.textContent = '1 pista';
+        }
+        if (s.id === 'os') {
+          labTitle.textContent = 'Lab 12 · Scheduler cooperativo';
+          labMeta.textContent = 'Objetivo: observar quantum, prioridad y espera';
+          codeArea.value = `while let Some(task) = queue.pop_front() {\n    run(task, quantum);\n    if task.ready() {\n        queue.push_back(task);\n    }\n}`;
+          score1.textContent = '70 / 100';
+          score2.textContent = '58 / 100';
+          score3.textContent = '2 pistas';
+        }
+        if (s.id === 'lab') {
+          labTitle.textContent = 'Lab vivo · Memoria paginada';
+          labMeta.textContent = 'Objetivo: visualizar page faults y reemplazo';
+          codeArea.value = `fn access(addr: usize) -> Result<(), Fault> {\n    let page = translate(addr)?;\n    frame_map.touch(page);\n    Ok(())\n}`;
+          score1.textContent = '91 / 100';
+          score2.textContent = '83 / 100';
+          score3.textContent = '0 pistas';
+        }
+        if (s.id === 'project') {
+          labTitle.textContent = 'Proyecto · Mini kernel en Rust';
+          labMeta.textContent = 'Objetivo: cumplir tests bajo restricciones reales';
+          codeArea.value = `// Restricciones:\n// - no_std\n// - sin alloc en hot path\n// - cobertura mínima 80%\n\npub fn init() {\n    // ...\n}`;
+          score1.textContent = '84 / 100';
+          score2.textContent = '74 / 100';
+          score3.textContent = '1 pista';
+        }
+      });
+      nav.appendChild(btn);
+    });
+
+    modules.forEach((m, i) => {
+      const el = document.createElement('div');
+      el.className = 'module-item' + (i === 1 ? ' active' : '');
+      el.innerHTML = `
+        <div class="row"><strong>${m.title}</strong><span>${m.score}</span></div>
+        <p>${m.desc}</p>
+        <div class="tags">${m.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+      `;
+      el.addEventListener('click', () => {
+        [...moduleList.children].forEach(x => x.classList.remove('active'));
+        el.classList.add('active');
+      });
+      moduleList.appendChild(el);
+    });
+
+    timeline.forEach((t, i) => {
+      const step = document.createElement('div');
+      step.className = 'step';
+      step.innerHTML = `
+        <div class="num">${String(i + 1).padStart(2, '0')}</div>
+        <div>
+          <h5>${t.title}</h5>
+          <p>${t.text}</p>
+        </div>
+      `;
+      timelineEl.appendChild(step);
+    });
+  </script>
+</body>
+</html>
