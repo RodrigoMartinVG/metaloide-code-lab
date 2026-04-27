@@ -284,6 +284,9 @@ Xrefs from Phase 1:
 
 ## OS Track
 
+> Full unit-level detail with canonical references, anchor/xref map, and source coverage:
+> see [OS_TRACK_MAP.md](OS_TRACK_MAP.md).
+
 **Prerequisite**: Rust Core Courses 1, 2, 6 complete.
 
 **Note**: This track targets RISC-V bare metal running in QEMU. This is the same architecture the Compilers track generates code for. Integration Lab I4 depends on this alignment.
