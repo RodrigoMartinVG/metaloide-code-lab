@@ -13,6 +13,9 @@ pub enum ForjaError {
     #[error("invalid status value '{0}': expected available | started | completed | mastered")]
     InvalidStatus(String),
 
+    #[error("unsupported language: {0}")]
+    UnsupportedLanguage(String),
+
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -20,7 +23,9 @@ pub enum ForjaError {
 impl IntoResponse for ForjaError {
     fn into_response(self) -> Response {
         let (status, msg) = match &self {
-            ForjaError::InvalidStatus(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            ForjaError::InvalidStatus(_) | ForjaError::UnsupportedLanguage(_) => {
+                (StatusCode::BAD_REQUEST, self.to_string())
+            }
             ForjaError::Database(_) | ForjaError::Io(_) => {
                 tracing::error!("internal error: {self}");
                 (StatusCode::INTERNAL_SERVER_ERROR, "internal server error".into())

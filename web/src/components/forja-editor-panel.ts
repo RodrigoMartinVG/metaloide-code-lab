@@ -2,14 +2,22 @@ import { LitElement, html, css } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import type { ExerciseBlock } from '../types.js'
 
+const WS_URL = 'ws://localhost:3000/ws/run'
+
+interface OutputLine {
+  kind: 'compiler' | 'stdout' | 'stderr' | 'error' | 'info'
+  text: string
+}
+
 @customElement('forja-editor-panel')
 export class ForjaEditorPanel extends LitElement {
   @property({ type: Object }) exercise!: ExerciseBlock
 
   @state() private _code    = ''
-  @state() private _output  = ''
+  @state() private _lines:  OutputLine[] = []
   @state() private _status: 'idle' | 'running' | 'success' | 'error' = 'idle'
-  @state() private _running = false
+
+  private _ws: WebSocket | null = null
 
   static styles = css`
     :host {
@@ -57,32 +65,32 @@ export class ForjaEditorPanel extends LitElement {
     }
 
     .btn-reset {
-      background:   none;
-      border:       1px solid var(--border);
-      cursor:       pointer;
-      font-family:  var(--font-mono);
-      font-size:    11px;
-      color:        var(--text-muted);
-      padding:      5px 10px;
-      border-radius:5px;
-      transition:   color 0.12s, border-color 0.12s;
+      background:    none;
+      border:        1px solid var(--border);
+      cursor:        pointer;
+      font-family:   var(--font-mono);
+      font-size:     11px;
+      color:         var(--text-muted);
+      padding:       5px 10px;
+      border-radius: 5px;
+      transition:    color 0.12s, border-color 0.12s;
     }
     .btn-reset:hover { color: var(--text-secondary); border-color: var(--text-muted); }
 
     .btn-run {
-      background:   var(--accent);
-      border:       none;
-      cursor:       pointer;
-      font-family:  var(--font-mono);
-      font-size:    11px;
-      font-weight:  500;
-      color:        #fff;
-      padding:      5px 14px;
-      border-radius:5px;
-      display:      flex;
-      align-items:  center;
-      gap:          5px;
-      transition:   background 0.12s;
+      background:    var(--accent);
+      border:        none;
+      cursor:        pointer;
+      font-family:   var(--font-mono);
+      font-size:     11px;
+      font-weight:   500;
+      color:         #fff;
+      padding:       5px 14px;
+      border-radius: 5px;
+      display:       flex;
+      align-items:   center;
+      gap:           5px;
+      transition:    background 0.12s;
     }
     .btn-run:hover:not(:disabled) { background: var(--accent-glow); }
     .btn-run:disabled { background: var(--bg-elevated); color: var(--text-muted); cursor: default; }
@@ -97,27 +105,27 @@ export class ForjaEditorPanel extends LitElement {
     }
 
     .gutter {
-      position:        absolute;
+      position:       absolute;
       top: 0; left: 0; bottom: 0;
-      width:           40px;
-      background:      #0d1117;
-      border-right:    1px solid #1a1f2a;
-      padding:         14px 0;
-      display:         flex;
-      flex-direction:  column;
-      align-items:     flex-end;
-      overflow:        hidden;
-      user-select:     none;
-      pointer-events:  none;
+      width:          40px;
+      background:     #0d1117;
+      border-right:   1px solid #1a1f2a;
+      padding:        14px 0;
+      display:        flex;
+      flex-direction: column;
+      align-items:    flex-end;
+      overflow:       hidden;
+      user-select:    none;
+      pointer-events: none;
     }
 
     .line-num {
-      font-family: var(--font-mono);
-      font-size:   11px;
-      color:       #3d4557;
-      line-height: 1.5;
+      font-family:  var(--font-mono);
+      font-size:    11px;
+      color:        #3d4557;
+      line-height:  1.5;
       padding-right:8px;
-      height:      19.5px;
+      height:       19.5px;
     }
 
     textarea.editor {
@@ -143,11 +151,11 @@ export class ForjaEditorPanel extends LitElement {
     /* ── Output panel ────────────────────────────────────────────────────── */
 
     .output-panel {
-      height:         180px;
+      height:         200px;
       border-top:     1px solid var(--border-subtle);
+      display:        flex;
       flex-direction: column;
       flex-shrink:    0;
-      display:        flex;
     }
 
     .output-header {
@@ -157,17 +165,16 @@ export class ForjaEditorPanel extends LitElement {
       display:       flex;
       align-items:   center;
       padding:       0 14px;
-      gap:           4px;
       flex-shrink:   0;
     }
 
-    .output-tab {
-      font-family:  var(--font-prose);
-      font-size:    11px;
-      color:        var(--text-muted);
-      padding:      2px 8px;
+    .output-label {
+      font-family: var(--font-prose);
+      font-size:   11px;
+      color:       var(--text-secondary);
+      background:  var(--bg-elevated);
+      padding:     2px 8px;
       border-radius:4px;
-      background:   var(--bg-elevated);
     }
 
     .output-status {
@@ -197,11 +204,24 @@ export class ForjaEditorPanel extends LitElement {
       font-family: var(--font-mono);
       font-size:   12px;
       line-height: 1.6;
-      white-space: pre-wrap;
-      word-break:  break-all;
     }
 
-    .idle-msg { color: var(--text-muted); font-style: italic; font-family: var(--font-prose); font-size: 12px; }
+    .idle-msg {
+      color:      var(--text-muted);
+      font-style: italic;
+      font-family:var(--font-prose);
+      font-size:  12px;
+    }
+
+    /* ── Output line colors ──────────────────────────────────────────────── */
+
+    .out-line { white-space: pre-wrap; word-break: break-all; display: block; }
+
+    .out-compiler { color: var(--text-muted); }
+    .out-stdout   { color: var(--text-primary); }
+    .out-stderr   { color: var(--warning); }
+    .out-error    { color: var(--error); }
+    .out-info     { color: var(--text-muted); font-style: italic; }
   `
 
   connectedCallback() {
@@ -211,10 +231,13 @@ export class ForjaEditorPanel extends LitElement {
 
   updated(changed: Map<string, unknown>) {
     if (changed.has('exercise') && this.exercise) {
-      this._code   = this.exercise.starter
-      this._status = 'idle'
-      this._output = ''
+      this._reset()
     }
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback()
+    this._ws?.close()
   }
 
   private _lineCount() { return this._code.split('\n').length }
@@ -229,8 +252,8 @@ export class ForjaEditorPanel extends LitElement {
 
     if (e.key === 'Tab') {
       e.preventDefault()
-      const s = ta.selectionStart, end = ta.selectionEnd
-      ta.value = ta.value.slice(0, s) + '    ' + ta.value.slice(end)
+      const s = ta.selectionStart
+      ta.value = ta.value.slice(0, s) + '    ' + ta.value.slice(ta.selectionEnd)
       ta.selectionStart = ta.selectionEnd = s + 4
       this._onInput(e)
       return
@@ -242,28 +265,67 @@ export class ForjaEditorPanel extends LitElement {
     }
   }
 
-  private async _run() {
-    this._running = true
-    this._status  = 'running'
-    this._output  = 'Connecting to backend…'
-    await new Promise(r => setTimeout(r, 400))
-    // M2: replace with real WebSocket /run call
-    this._output  = '   Compiling…\n    Finished dev in 0.38s\n\nBackend not connected. Wire up in M2.'
-    this._status  = 'success'
-    this._running = false
+  private _run() {
+    if (this._status === 'running') return
+
+    this._lines  = []
+    this._status = 'running'
+    this.requestUpdate()
+
+    const ws = new WebSocket(WS_URL)
+    this._ws = ws
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ language: this.exercise.language, code: this._code }))
+    }
+
+    ws.onmessage = (e: MessageEvent) => {
+      const msg = JSON.parse(e.data as string) as { type: string; data: unknown }
+
+      if (msg.type === 'done') {
+        const d  = msg.data as { exit_code: number }
+        this._status = d.exit_code === 0 ? 'success' : 'error'
+        this._ws     = null
+      } else {
+        const kind = msg.type as OutputLine['kind']
+        const text = String(msg.data)
+        this._lines = [...this._lines, { kind, text }]
+      }
+      this.requestUpdate()
+    }
+
+    ws.onerror = () => {
+      this._lines  = [{ kind: 'error', text: `Could not connect to ${WS_URL}\nRun: cd backend && cargo run` }]
+      this._status = 'error'
+      this._ws     = null
+      this.requestUpdate()
+    }
+
+    ws.onclose = () => {
+      if (this._status === 'running') {
+        this._status = 'error'
+        this.requestUpdate()
+      }
+      this._ws = null
+    }
   }
 
   private _reset() {
-    this._code   = this.exercise.starter
+    this._ws?.close()
+    this._ws     = null
+    this._code   = this.exercise?.starter ?? ''
+    this._lines  = []
     this._status = 'idle'
-    this._output = ''
     this.requestUpdate()
   }
 
   render() {
-    if (!this.exercise) return html`<div style="padding:40px;color:var(--text-muted)">No exercise.</div>`
+    if (!this.exercise) {
+      return html`<div style="padding:40px;color:var(--text-muted)">No exercise.</div>`
+    }
 
-    const lines = this._lineCount()
+    const running = this._status === 'running'
+    const lines   = this._lineCount()
 
     return html`
       <div class="exercise-bar">
@@ -273,8 +335,8 @@ export class ForjaEditorPanel extends LitElement {
         </div>
         <div class="exercise-actions">
           <button class="btn-reset" @click=${this._reset}>Reset</button>
-          <button class="btn-run" ?disabled=${this._running} @click=${this._run}>
-            ${this._running
+          <button class="btn-run" ?disabled=${running} @click=${this._run}>
+            ${running
               ? html`<span>Running…</span>`
               : html`<svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1.5l7 3.5-7 3.5V1.5z"/></svg> Run`
             }
@@ -300,17 +362,17 @@ export class ForjaEditorPanel extends LitElement {
 
       <div class="output-panel">
         <div class="output-header">
-          <span class="output-tab">Output</span>
+          <span class="output-label">Output</span>
           <div class="output-status">
-            ${this._status === 'running' ? html`<div class="status-dot running"></div><span style="color:var(--warning)">Running</span>` : null}
-            ${this._status === 'success' ? html`<div class="status-dot success"></div><span style="color:var(--success)">Done</span>`    : null}
-            ${this._status === 'error'   ? html`<div class="status-dot error"></div><span style="color:var(--error)">Error</span>`       : null}
+            ${this._status === 'running' ? html`<div class="status-dot running"></div><span style="color:var(--warning)">Running</span>`  : null}
+            ${this._status === 'success' ? html`<div class="status-dot success"></div><span style="color:var(--success)">Done</span>`     : null}
+            ${this._status === 'error'   ? html`<div class="status-dot error"></div><span style="color:var(--error)">Error</span>`        : null}
           </div>
         </div>
         <div class="output-body">
-          ${this._status === 'idle'
+          ${this._status === 'idle' && this._lines.length === 0
             ? html`<span class="idle-msg">Ctrl+Enter or Run to execute.</span>`
-            : html`<span>${this._output}</span>`
+            : this._lines.map(l => html`<span class="out-line out-${l.kind}">${l.text}</span>`)
           }
         </div>
       </div>
