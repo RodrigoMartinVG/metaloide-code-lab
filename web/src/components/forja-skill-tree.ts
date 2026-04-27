@@ -119,6 +119,7 @@ export class ForjaSkillTree extends LitElement {
       color: var(--text-primary);
     }
 
+    .pillar-title.c         { color: var(--pillar-c); }
     .pillar-title.rust      { color: var(--pillar-rust); }
     .pillar-title.compilers { color: var(--pillar-compilers); }
     .pillar-title.os        { color: var(--pillar-os); }
@@ -172,7 +173,7 @@ export class ForjaSkillTree extends LitElement {
     const H = this._svgHeight()
     const completed = this._completedCount()
     const total = this.nodes.length
-    const pillarLabel = this.pillar === 'os' ? 'Operating Systems' : this.pillar.charAt(0).toUpperCase() + this.pillar.slice(1)
+    const pillarLabel = this.pillar === 'c' ? 'C' : this.pillar === 'os' ? 'Operating Systems' : this.pillar.charAt(0).toUpperCase() + this.pillar.slice(1)
 
     return html`
       <div class="pillar-header">

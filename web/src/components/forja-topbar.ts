@@ -94,6 +94,7 @@ export class ForjaTopbar extends LitElement {
     .pillar-btn.active {
       background: var(--bg-elevated);
     }
+    .pillar-btn.c.active         { color: var(--pillar-c); }
     .pillar-btn.rust.active      { color: var(--pillar-rust); }
     .pillar-btn.compilers.active { color: var(--pillar-compilers); }
     .pillar-btn.os.active        { color: var(--pillar-os); }
@@ -196,11 +197,11 @@ export class ForjaTopbar extends LitElement {
         </div>
         <div class="sep"></div>
         <div class="pillars">
-          ${(['rust', 'compilers', 'os'] as Pillar[]).map(p => html`
+          ${(['c', 'rust', 'compilers', 'os'] as Pillar[]).map(p => html`
             <button
               class="pillar-btn ${p} ${this.pillar === p ? 'active' : ''}"
               @click=${() => this._pillarClick(p)}
-            >${p === 'os' ? 'OS' : p.charAt(0).toUpperCase() + p.slice(1)}</button>
+            >${p === 'c' ? 'C' : p === 'os' ? 'OS' : p.charAt(0).toUpperCase() + p.slice(1)}</button>
           `)}
         </div>
         <div class="spacer"></div>

@@ -25,6 +25,7 @@
   --info:    #388bfd;
 
   /* Pillar colors */
+  --pillar-c:         #3fb950;
   --pillar-rust:      #e05c1a;
   --pillar-compilers: #58a6ff;
   --pillar-os:        #bc8cff;

@@ -2,7 +2,7 @@ import './styles/tokens.css'
 import { LitElement, html, css } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import type { ConceptNode, Pillar } from './data/mock.js'
-import { MOCK_NODES, MOCK_EDGES, MOCK_LABS } from './data/mock.js'
+import { MOCK_NODES, MOCK_EDGES, MOCK_LABS, MOCK_C_NODES, MOCK_C_EDGES, MOCK_C_LABS } from './data/mock.js'
 
 import './components/forja-topbar.js'
 import './components/forja-skill-tree.js'
@@ -13,7 +13,7 @@ type View = { kind: 'tree' } | { kind: 'lab'; conceptId: string; depth: number }
 @customElement('forja-app')
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 class ForjaApp extends LitElement {
-  @state() private _pillar: Pillar = 'rust'
+  @state() private _pillar: Pillar = 'c'
   @state() private _view: View = { kind: 'tree' }
 
   static styles = css`
@@ -74,26 +74,35 @@ class ForjaApp extends LitElement {
     this._view = { kind: 'tree' }
   }
 
+  private _allNodes() { return [...MOCK_C_NODES, ...MOCK_NODES] }
+  private _allLabs()  { return { ...MOCK_C_LABS, ...MOCK_LABS } }
+
+  private _pillarLabel(p: Pillar): string {
+    if (p === 'c')  return 'C'
+    if (p === 'os') return 'Operating Systems'
+    return p.charAt(0).toUpperCase() + p.slice(1)
+  }
+
   private _getBreadcrumb(): string {
     if (this._view.kind !== 'lab') return ''
     const v = this._view as { kind: 'lab'; conceptId: string; depth: number }
-    const node = MOCK_NODES.find(n => n.id === v.conceptId && n.depth === v.depth)
+    const node = this._allNodes().find(n => n.id === v.conceptId && n.depth === v.depth)
     if (!node) return ''
-    const pillarName = this._pillar.charAt(0).toUpperCase() + this._pillar.slice(1)
-    return `${pillarName} › ${node.name} › Depth ${node.depth}`
+    return `${this._pillarLabel(this._pillar)} › ${node.name} › Depth ${node.depth}`
   }
 
   private _getCurrentLab() {
     if (this._view.kind !== 'lab') return null
     const v = this._view as { kind: 'lab'; conceptId: string; depth: number }
-    return MOCK_LABS[`${v.conceptId}-${v.depth}`] ?? null
+    return this._allLabs()[`${v.conceptId}-${v.depth}`] ?? null
   }
 
   render() {
     const isLab = this._view.kind === 'lab'
-    const filteredNodes = MOCK_NODES.filter(n => n.pillar === this._pillar)
-    const filteredEdges = MOCK_EDGES.filter(e => {
-      const from = MOCK_NODES.find(n => n.id === e.from.id)
+    const allNodes = this._allNodes()
+    const filteredNodes = allNodes.filter(n => n.pillar === this._pillar)
+    const filteredEdges = (this._pillar === 'c' ? MOCK_C_EDGES : MOCK_EDGES).filter(e => {
+      const from = allNodes.find(n => n.id === e.from.id)
       return from?.pillar === this._pillar
     })
 

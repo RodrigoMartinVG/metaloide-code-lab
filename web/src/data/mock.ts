@@ -1,5 +1,5 @@
 export type NodeStatus = 'locked' | 'available' | 'started' | 'completed' | 'mastered'
-export type Pillar = 'rust' | 'compilers' | 'os'
+export type Pillar = 'c' | 'rust' | 'compilers' | 'os'
 
 export interface ConceptNode {
   id: string
@@ -31,6 +31,27 @@ export type Block =
 
 // ── Mock graph ────────────────────────────────────────────────────────────────
 
+export const MOCK_C_NODES: ConceptNode[] = [
+  { id: 'c-toolchain',  depth: 1, pillar: 'c', name: 'Toolchain',          status: 'completed', estimatedMinutes: 20, x: 256, y:  40 },
+  { id: 'c-syntax',     depth: 1, pillar: 'c', name: 'Syntax & Model',     status: 'started',   estimatedMinutes: 30, x:  40, y: 180 },
+  { id: 'c-pointers',   depth: 1, pillar: 'c', name: 'Pointers',           status: 'available', estimatedMinutes: 35, x: 256, y: 180 },
+  { id: 'c-arrays',     depth: 1, pillar: 'c', name: 'Arrays & Strings',   status: 'available', estimatedMinutes: 30, x: 472, y: 180 },
+  { id: 'c-functions',  depth: 1, pillar: 'c', name: 'Functions & Scope',  status: 'locked',    estimatedMinutes: 30, x:  40, y: 320 },
+  { id: 'c-structs',    depth: 1, pillar: 'c', name: 'Structs & Unions',   status: 'locked',    estimatedMinutes: 40, x: 256, y: 320 },
+  { id: 'c-memory',     depth: 1, pillar: 'c', name: 'Manual Memory',      status: 'locked',    estimatedMinutes: 45, x: 472, y: 320 },
+  { id: 'c-undefined',  depth: 1, pillar: 'c', name: 'Undefined Behavior', status: 'locked',    estimatedMinutes: 40, x: 256, y: 460 },
+]
+
+export const MOCK_C_EDGES: GraphEdge[] = [
+  { from: { id: 'c-toolchain', depth: 1 }, to: { id: 'c-syntax',    depth: 1 } },
+  { from: { id: 'c-toolchain', depth: 1 }, to: { id: 'c-pointers',  depth: 1 } },
+  { from: { id: 'c-toolchain', depth: 1 }, to: { id: 'c-arrays',    depth: 1 } },
+  { from: { id: 'c-syntax',    depth: 1 }, to: { id: 'c-functions', depth: 1 } },
+  { from: { id: 'c-pointers',  depth: 1 }, to: { id: 'c-structs',   depth: 1 } },
+  { from: { id: 'c-pointers',  depth: 1 }, to: { id: 'c-memory',    depth: 1 } },
+  { from: { id: 'c-memory',    depth: 1 }, to: { id: 'c-undefined', depth: 1 } },
+]
+
 export const MOCK_NODES: ConceptNode[] = [
   { id: 'tooling',         depth: 1, pillar: 'rust', name: 'Tooling',           status: 'completed', estimatedMinutes: 20, x: 256, y:  40 },
   { id: 'variables-types', depth: 1, pillar: 'rust', name: 'Variables & Types', status: 'started',   estimatedMinutes: 30, x:  40, y: 180 },
@@ -53,6 +74,74 @@ export const MOCK_EDGES: GraphEdge[] = [
 ]
 
 // ── Mock labs ─────────────────────────────────────────────────────────────────
+
+export const MOCK_C_LABS: Record<string, Lab> = {
+  'c-toolchain-1': {
+    id: 'c-toolchain-1',
+    conceptId: 'c-toolchain',
+    depth: 1,
+    title: 'Toolchain — Surface',
+    blocks: [
+      {
+        type: 'prose',
+        content: `# Environment & Toolchain
+
+C has no official build system. The toolchain is just \`gcc\` (or \`clang\`) invoked
+directly. Understanding the four-stage pipeline — preprocess, compile, assemble, link —
+is not optional. It's the foundation of every debugging session you'll ever have.
+
+## The four stages
+
+\`\`\`
+source.c  →  [preprocessor]  →  source.i
+source.i  →  [compiler]      →  source.s   (assembly)
+source.s  →  [assembler]     →  source.o   (object file)
+source.o  →  [linker]        →  a.out      (executable)
+\`\`\`
+
+Run each stage explicitly with \`-E\`, \`-S\`, \`-c\`:
+
+\`\`\`bash
+gcc -E  hello.c -o hello.i   # preprocessor output
+gcc -S  hello.c -o hello.s   # assembly output
+gcc -c  hello.c -o hello.o   # object file
+gcc     hello.c -o hello     # full pipeline
+\`\`\`
+
+## Flags you will always use
+
+| Flag | Meaning |
+|------|---------|
+| \`-Wall -Wextra\` | Enable most warnings |
+| \`-g\` | Embed debug symbols |
+| \`-O2\` | Optimize (hides bugs; use \`-O0\` for debugging) |
+| \`-std=c11\` | Fix the language version |
+| \`-fsanitize=address\` | Enable AddressSanitizer |
+
+The exercise below compiles and runs a minimal C program.
+The goal is to read the compiler's output — not just "make it work."
+`,
+      },
+      {
+        type: 'code',
+        id: 'ex-1',
+        language: 'c',
+        description: 'Complete main() so it prints the address and value of x using printf. Use %p for the pointer and %d for the integer.',
+        starter: `#include <stdio.h>
+
+int main(void) {
+    int x = 42;
+    int *p = &x;
+
+    /* print: addr=0x..., value=42 */
+
+    return 0;
+}
+`,
+      },
+    ],
+  },
+}
 
 export const MOCK_LABS: Record<string, Lab> = {
   'variables-types-1': {
