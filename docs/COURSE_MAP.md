@@ -19,8 +19,9 @@ This is the navigational skeleton of the curriculum. Unit-level detail (portals,
 | Module | Units |
 |--------|-------|
 | CC1.1 El ecosistema y la cadena de compilación | El entorno — WSL2, terminal, gcc (D1); La cadena — preprocesador, compilador, ensamblador, linker (D2); Inspección — objdump, readelf, nm (D2) |
-| CC1.2 El layout de memoria | Las secciones — Text, Data, BSS, Stack, Heap (D1); Variables y sus ubicaciones (D2); El primer Makefile (D1) |
-| CC1.3 Tipos con consciencia de la máquina | sizeof() y límites de tipos (D1); Complemento a dos y representación binaria (D2); Operadores de bits — flags, máscaras, protocolos (D2); Funciones y el stack frame (D2) |
+| CC1.2 La sintaxis esencial | Variables, tipos primitivos y I/O básica (D1); Control de flujo — if, while, for, switch (D1); Funciones — declaración, prototipos, recursión (D1); Arrays en el stack y strings como arrays de char (D1) |
+| CC1.3 El layout de memoria | Las secciones — Text, Data, BSS, Stack, Heap (D1); Variables y sus ubicaciones (D2); El primer Makefile (D1) |
+| CC1.4 Tipos con consciencia de la máquina | sizeof() y límites de tipos (D1); Complemento a dos y representación binaria (D2); Operadores de bits — flags, máscaras, protocolos (D2); Funciones y el stack frame (D2) |
 
 Portals from CC1:
 - `[layout-memoria] D1` → OS A: "Las secciones de tu binario son lo que el OS loader mapea en memoria virtual."
@@ -32,7 +33,7 @@ Portals from CC1:
 
 | Module | Units |
 |--------|-------|
-| CC2.1 El corazón de C — punteros | La dirección como valor — & y * (D1); Aritmética de punteros (D2); Arrays, strings y el decay (D2); Punteros a punteros — modificar direcciones dentro de funciones (D3) |
+| CC2.1 El corazón de C — punteros | La dirección como valor — & y * (D1); Aritmética de punteros (D2); Arrays, strings y el decay (D2); Punteros a punteros (D3); El puntero NULL y validación (D1); void* y genericidad en C (D2); const con punteros (D1) |
 | CC2.2 El heap manual | malloc, calloc, realloc — pedir memoria al OS (D1); free y el ciclo de vida (D1); Valgrind — leer reportes de leaks y segfaults (D2); Los errores clásicos — dangling, use-after-free, buffer overflow (D2) |
 
 Portals from CC2:
@@ -46,15 +47,18 @@ Portals from CC2:
 
 | Module | Units |
 |--------|-------|
-| CC3.1 Tipos complejos | Structs — agrupación heterogénea y alignment/padding (D1); Unions — compartiendo la misma dirección (D2); Punteros a funciones — callbacks y polimorfismo primitivo (D2) |
-| CC3.2 El ensamblador como microscopio | Registros x86-64 — RAX, RSP, RDI y familia (D1); gcc -S — generación y lectura de ASM (D1); La calling convention — System V AMD64 ABI (D2); -O0 vs -O3 — el compilador reescribe tu lógica (D2) |
-| CC3.3 Ingeniería inversa básica | objdump -d y la lectura de binarios (D2); Identificar lógica de control en ASM (D2); Parchear un binario — el lab ético (D3) |
+| CC3.1 Tipos complejos | Structs y alignment (D1); Unions (D2); Punteros a funciones — callbacks y polimorfismo primitivo (D2); enum: tipos enumerados y valores simbólicos (D1); typedef: nombres para tipos (D1) |
+| CC3.2 El preprocesador y múltiples archivos | Macros — #define, macros con parámetros, peligros (D1); Compilación separada — headers, include guards, extern, static (D2); Compilación condicional — #ifdef, #ifndef, #if (D1) |
+| CC3.3 El ensamblador como microscopio | Registros x86-64 — RAX, RSP, RDI y familia (D1); gcc -S — generación y lectura de ASM (D1); La calling convention — System V AMD64 ABI (D2); -O0 vs -O3 — el compilador reescribe tu lógica (D2) |
+| CC3.4 Ingeniería inversa básica | objdump -d y la lectura de binarios (D2); Identificar lógica de control en ASM (D2); Parchear un binario — el lab ético (D3) |
 
 Portals from CC3:
 - `[calling-conv] D2` → Compilers E: "La ABI System V que estudiaste es lo que tu backend de código debe generar."
 - `[registers] D2` → OS D: "El context switch guarda exactamente los registros que viste aquí — RSP, RAX, los caller-saved."
 - `[fn-pointers] D2` → Rust C4: "Los punteros a función de C son la base de las vtables y los trait objects de Rust."
 - `[asm-reading] D2` → Compilers E: "Leer el ASM que genera gcc te da intuición sobre lo que tu codegen debería producir."
+- `[preprocessor] D1` → Compilers A: "El preprocesador es la primera fase del pipeline de compilación que tu compilador va a implementar."
+- `[separate-comp] D2` → Compilers A: "El linker que une los .o files es la última fase del pipeline."
 - `[reverse-eng] D3` → Compilers: "Parsear un binario es lo que el linker y el loader hacen antes de ejecutar."
 
 **Capstone: Proyecto final — Estructura de datos dinámica y genérica**
@@ -73,7 +77,7 @@ Implementar un `Vector` dinámico o `HashMap` básico en C:
 **Color**: `#e05c1a`
 
 > Full unit-level detail with canonical references, portal/anchor/xref map, and source coverage:
-> see [RUST_CORE_MAP.md](RUST_CORE_MAP.md).
+> see [RUST_TRACK_MAP.md](RUST_TRACK_MAP.md).
 
 ### Course 1: Surface and Tooling
 *"The student can write, compile, and reason about simple Rust programs."*
@@ -200,6 +204,9 @@ Xrefs from this course:
 ---
 
 ## Compilers Track
+
+> Full unit-level detail with canonical references, anchor/xref map, and source coverage:
+> see [COMPILERS_TRACK_MAP.md](COMPILERS_TRACK_MAP.md).
 
 **Prerequisite**: Rust Core Courses 1–3 complete.
 

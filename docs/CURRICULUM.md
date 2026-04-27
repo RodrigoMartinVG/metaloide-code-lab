@@ -85,85 +85,76 @@ The student who finishes this track has:
 > see [C_TRACK_MAP.md](C_TRACK_MAP.md).
 
 **Course CC1: El entorno y los tipos**
-- Module CC1.1: El ecosistema y la cadena de compilación
-- Module CC1.2: El layout de memoria — Text, Data, BSS, Stack, Heap
-- Module CC1.3: Tipos con consciencia de la máquina — sizeof, bits, stack frame
+- Module CC1.1: El ecosistema y la cadena de compilación — entorno POSIX, gcc, objdump
+- Module CC1.2: La sintaxis esencial — variables, control de flujo, funciones, arrays y strings
+- Module CC1.3: El layout de memoria — Text, Data, BSS, Stack, Heap
+- Module CC1.4: Tipos con consciencia de la máquina — sizeof, complemento a dos, bits, stack frame
 
 **Course CC2: Punteros y el heap**
-- Module CC2.1: El corazón de C — punteros, aritmética, arrays, strings
+- Module CC2.1: El corazón de C — punteros, aritmética, arrays, strings, NULL, void*, const
 - Module CC2.2: El heap manual — malloc/free/Valgrind/los errores clásicos
 
 **Course CC3: Composición y la máquina**
-- Module CC3.1: Tipos complejos — structs, alignment, unions, punteros a funciones
-- Module CC3.2: El ensamblador como microscopio — leer lo que el compilador genera
-- Module CC3.3: Ingeniería inversa básica — objdump, parchear binarios [capstone]
+- Module CC3.1: Tipos complejos — structs, alignment, unions, punteros a funciones, enum, typedef
+- Module CC3.2: El preprocesador y múltiples archivos — macros, headers, include guards, compilación condicional
+- Module CC3.3: El ensamblador como microscopio — registros x86-64, gcc -S, calling convention, -O0 vs -O3
+- Module CC3.4: Ingeniería inversa básica — objdump, identificar lógica en ASM, parchear binarios [capstone]
 
 Portals from C Track:
-- `[CC2 · heap] D2` → Rust C3: "Escribiste un use-after-free. Rust lo hace imposible en compile time."
-- `[CC2 · valgrind] D2` → OS C: "malloc llama a brk/mmap. Eso es lo que el kernel provee."
-- `[CC3.2 · calling-conv] D2` → Compilers E: "La ABI que leíste es lo que tu backend debe generar."
-- `[CC3.2 · registers] D2` → OS D: "El context switch guarda exactamente los registros que estudiaste aquí."
-- `[CC3.3 · reverse-engineering] D3` → Compilers: "Leer un binario es lo que hace el linker/loader."
+- `[CC2.2 · errores-clasicos] D2` → Rust RC3: "Escribiste un use-after-free. Rust lo hace imposible en compile time." ← PORTAL CENTRAL
+- `[CC2.2 · valgrind] D2` → OS C: "malloc llama a brk/mmap. Eso es lo que el kernel provee."
+- `[CC3.3 · calling-conv] D2` → Compilers E: "La ABI que leíste es lo que tu backend debe generar."
+- `[CC3.3 · registers] D2` → OS D: "El context switch guarda exactamente los registros que estudiaste aquí."
+- `[CC3.2 · separate-comp] D2` → Compilers A: "El linker que une .o files es la última fase del pipeline."
+- `[CC3.4 · reverse-engineering] D3` → Compilers: "Leer un binario es lo que hace el linker/loader."
 
 ---
 
-## Rust Core
+## Rust Track
 
 **Prerequisite**: C Track completion (or placement assessment for students with prior C/systems experience).
 
-The goal is not to learn Rust. The goal is to internalize a precise mental model of ownership, borrowing, and the relationship between types and memory — and to express that model in code that a machine can check.
+The goal is not to learn Rust. The goal is to internalize a precise mental model of ownership, borrowing, and the relationship between types and memory — and to recognize every rule as the answer to a problem the student already lived in C.
 
-**Course 1: The Memory Model**
-- Module 1.1: Stack and Heap — not a metaphor, a physical layout
-  - Unit 1.1.1: Variables and values (D1)
-  - Unit 1.1.2: Stack vs. heap — what actually gets allocated where (D2)
-  - Unit 1.1.3: The activation frame in detail (D3)
-- Module 1.2: Moves and Drops
-  - Unit 1.2.1: Move semantics (D1)
-  - Unit 1.2.2: The Drop trait and RAII (D2)
-- *Capstone lab:* Implement a manual arena allocator in Rust without `Vec`
+> Full unit-level detail with portal/anchor/xref map and source coverage:
+> see [RUST_TRACK_MAP.md](RUST_TRACK_MAP.md).
 
-**Course 2: Ownership**
-- Module 2.1: The ownership invariant
-- Module 2.2: Borrowing
-- Module 2.3: Lifetimes
-- *Capstone lab:* Fix 10 progressively harder borrow checker errors, each revealing a different invariant
+**Course RC1: La superficie y las herramientas**
+- Module RC1.1: La cadena de herramientas — rustup, cargo, leer errores del compilador
+- Module RC1.2: Variables, tipos y funciones — let/mut, tipos escalares, funciones, expresiones
+- Module RC1.3: Control de flujo — if/else, loops, match, if let, let...else
 
-**Course 3: The Type System**
-- Module 3.1: Traits and generics
-- Module 3.2: Trait objects and dynamic dispatch
-- Module 3.3: Advanced types (GATs, const generics, phantom data)
-- *Capstone lab:* Build a trait-based plugin system; then rebuild it with static dispatch and compare the generated code
+**Course RC2: Structs, enums y organización**
+- Module RC2.1: Structs — campos, métodos, impl, repr(C), alignment
+- Module RC2.2: Enums con datos — Option, Result, máquinas de estado, discriminante
+- Module RC2.3: Organización del código — módulos, crates, workspaces, regla orphan
 
-**Course 4: Error Handling**
-- Module 4.1: Result and Option as encoded control flow
-- Module 4.2: The `?` operator desugared
-- Module 4.3: Custom error types and the `Error` trait
-- *Capstone lab:* Build an error-handling layer for a file parser without any `.unwrap()`
+**Course RC3: El modelo de memoria**
+- Module RC3.1: Stack y heap — no es una metáfora (Box, Drop, RAII, GlobalAlloc)
+- Module RC3.2: Ownership — el invariante fundamental, move semantics, Rc/Arc, NLL
+- Module RC3.3: Borrowing — referencias, aliasing XOR mutation, entry API
+- Module RC3.4: Lifetimes — anotaciones, elisión, structs con referencias, varianza
 
-**Course 5: Concurrency**
-- Module 5.1: Threads and the type system as a race condition detector
-- Module 5.2: Shared state: `Arc<Mutex<T>>` in depth
-- Module 5.3: Message passing as ownership transfer
-- Module 5.4: Async/await: state machines, `Poll`, `Waker`
-- *Capstone lab:* Implement a thread pool from scratch; explain why it can't deadlock
+**Course RC4: El sistema de tipos**
+- Module RC4.1: Traits — definición, implementación, blanket impls, object safety, vtable
+- Module RC4.2: Generics — monomorphización, const generics, PhantomData, ZSTs
+- Module RC4.3: Smart pointers — Box/Rc/Arc/RefCell/Mutex, interior mutability, Deref
 
-**Course 6: Unsafe**
-- Module 6.1: What `unsafe` enables and what it doesn't excuse
-- Module 6.2: Raw pointers, `transmute`, `from_raw_parts`
-- Module 6.3: Writing safe abstractions over unsafe code
-- *Capstone lab:* Implement a lock-free queue using atomics and `unsafe`; prove it's correct
+**Course RC5: Colecciones y manejo de errores**
+- Module RC5.1: Colecciones — Vec, String, HashMap, iterators, closures, zero-cost
+- Module RC5.2: Manejo de errores — Result, ?, thiserror, anyhow
 
-**Course 7: Async and the Execution Model**
-- Module 7.1: The async runtime model (Tokio internals)
-- Module 7.2: `Pin<T>` and self-referential futures
-- Module 7.3: Writing a toy executor from scratch
+**Course RC6: Concurrencia**
+- Module RC6.1: Threads y estado compartido — Send/Sync, Mutex, RwLock, channels, atomics
+- Module RC6.2: Async y el modelo de ejecución — Future, Poll, Waker, Pin, executor
 
-**Course 8: Rust in the System**
-- Module 8.1: FFI: calling C from Rust, calling Rust from C
-- Module 8.2: Procedural macros
-- Module 8.3: Build scripts and the compilation pipeline
-- Module 8.4: Embedded Rust: `no_std`, bare-metal constraints
+**Course RC7: Unsafe y el runtime mínimo**
+- Module RC7.1: Unsafe Rust — los cinco superpoderes, raw pointers, transmute, MIRI
+- Module RC7.2: no_std y el runtime mínimo — core vs std, #[panic_handler], GlobalAlloc
+
+**Course RC8: Macros, FFI y Rust en el sistema**
+- Module RC8.1: Macros — macro_rules!, proc macros, syn, quote
+- Module RC8.2: FFI e interoperabilidad — extern "C", bindgen, build scripts, linker scripts
 
 ---
 
@@ -335,31 +326,42 @@ Implement a mark-and-sweep GC in Rust using `unsafe`. It must correctly collect 
 ## Progression Graph (simplified)
 
 ```
-Rust Core 1 (Memory Model)
-  └─ Rust Core 2 (Ownership)
-       ├─ Rust Core 3 (Types)
-       │    ├─ Rust Core 5 (Concurrency)
-       │    │    └─ Rust Core 6 (Unsafe) ──────────────── Project: broom
-       │    └─ Rust Core 4 (Errors)
-       │
-       ├─ Compilers A (Front End) ──────────────────────── unlocked by Rust 1-3
-       │    └─ Compilers B (Semantics) ─── Project: rlox (with Rust 1-4)
-       │         └─ Compilers C (IR)
-       │              ├─ Compilers D (Optimization)
-       │              └─ Compilers E (Codegen/RISC-V → abstraction → Cranelift)
-       │                   └─ Project: rustyc
-       │
-       └─ OS A (Bare Metal) ────────────── unlocked by Rust 1, 2, 6
-            └─ OS B (Interrupts)
-                 └─ OS C (Memory)
-                      └─ OS D (Processes) ─── Project: irk (with Rust 6)
-                           └─ OS E (File Systems)
-                                └─ OS F (Concurrency)
+C Track (entry point — no prerequisites)
+  CC1 (entorno, sintaxis, memoria, tipos)
+    └─ CC2 (punteros, heap, Valgrind, errores clásicos)
+         └─ CC3 (structs, preprocesador, ASM, ingeniería inversa)
+              └─ CAPSTONE: estructura de datos dinámica en C
+
+              │ ← PORTAL CENTRAL: use-after-free → Rust RC3
+              ▼
+
+Rust Track RC1 (superficie, herramientas)
+  └─ RC2 (structs, enums, organización)
+       └─ RC3 (modelo de memoria — ownership, borrowing, lifetimes)
+            ├─ RC4 (tipos — traits, generics, smart pointers)
+            │    ├─ RC5 (colecciones, error handling)
+            │    └─ RC6 (concurrencia)
+            │         └─ RC7 (unsafe, no_std) ──────────── Project: broom
+            │              └─ RC8 (macros, FFI)
+            │
+            ├─ Compilers A (Front End) ────── unlocked by RC1–RC3
+            │    └─ Compilers B (Semantics) ── Project: rlox (with RC4)
+            │         └─ Compilers C (IR)
+            │              ├─ Compilers D (Optimization)
+            │              └─ Compilers E (Codegen: RISC-V → abstraction → Cranelift)
+            │                   └─ Project: rustyc
+            │
+            └─ OS A (Bare Metal) ───────────── unlocked by RC3, RC7
+                 └─ OS B (Interrupts)
+                      └─ OS C (Memory)
+                           └─ OS D (Processes) ── Project: irk
+                                └─ OS E (File Systems)
+                                     └─ OS F (Concurrency)
 
 Integration Labs (at track intersections):
-  I1 — Rust C6 + OS C3
-  I2 — Compilers E4 + OS A3
+  I1 — RC7 + OS C3
+  I2 — Compilers E4 + OS A
   I3 — Compilers E4 + OS D4
-  I4 — all tracks
-  I5 — Compilers E8
+  I4 — all tracks (your compiler generates ELF your OS executes)
+  I5 — Compilers E8 (multi-architecture)
 ```

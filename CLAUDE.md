@@ -36,7 +36,8 @@ The second reading of a concept (first in C, then in Rust; first in Rust, then i
 | [docs/SKILL_GRAPH.md](docs/SKILL_GRAPH.md) | Concept × depth model, full node list, cross-pillar unlocks |
 | [docs/COURSE_MAP.md](docs/COURSE_MAP.md) | Full Track → Course → Module → Unit map for all four tracks |
 | [docs/C_TRACK_MAP.md](docs/C_TRACK_MAP.md) | C Track: full unit content, BlogPost per layer, D-levels, portal/anchor map, sources |
-| [docs/RUST_CORE_MAP.md](docs/RUST_CORE_MAP.md) | Rust Core: full unit content, D1/D2/D3 per unit, TRPL refs, portal/anchor/xref map |
+| [docs/RUST_TRACK_MAP.md](docs/RUST_TRACK_MAP.md) | Rust Track: full unit content, BlogPost per layer, D-levels, portal/anchor/xref map, sources |
+| [docs/COMPILERS_TRACK_MAP.md](docs/COMPILERS_TRACK_MAP.md) | Compilers Track: full unit content, BlogPost per layer, D-levels, anchor/xref map, sources |
 | [docs/INTEGRATION_LABS.md](docs/INTEGRATION_LABS.md) | I1–I5 integration labs where tracks converge |
 | [docs/PORTAL_ANCHOR_SPEC.md](docs/PORTAL_ANCHOR_SPEC.md) | PORTAL/ANCHOR/XREF block format, rendering, skill graph appearance |
 | [docs/ONBOARDING.md](docs/ONBOARDING.md) | Bootstrap problem, web-detects-backend flow, installation steps |

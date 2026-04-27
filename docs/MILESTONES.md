@@ -27,24 +27,27 @@
 
 ---
 
-## M3 — "Rust real corre en el browser"
+## M3 — "El código real corre en el browser"
 **Resultado**: el código que escribís en Monaco se compila y ejecuta de verdad.
 
-- Backend invoca `rustc` / `cargo` en un subprocess con timeout
+- Backend invoca `gcc` / `rustc` / `cargo` en un subprocess con timeout (dentro de Docker)
+- Docker containers sandboxed, ephemeral, resource-limited — uno para C (gcc + valgrind), uno para Rust (cargo)
 - Output streamea por WebSocket línea a línea
 - Frontend renderiza output diferenciando `stdout`, `stderr`, errores del compilador
 - Los errores del compilador son clickeables (saltan a la línea en Monaco)
-- Primer lab real: "Hello, World" — escribe, compila, corre
+- Primer lab real: C Track "Hola, máquina" — escribe C, compila con gcc, ve el output
+- El mismo WebSocket sirve para Rust: misma infraestructura, distinto container
 
-**Valor**: el producto central ya existe y es usable.
+**Valor**: el producto central ya existe y es usable para el primer track (C).
 
 ---
 
 ## M4 — "El skill tree es real"
 **Resultado**: el mapa se ve como un mapa real, navegar entre conceptos funciona.
 
-- Backend sirve el grafo de units desde archivos en disco (los primeros 6–8 units del Rust Core)
+- Backend sirve el grafo de units desde archivos en disco (los primeros 6–8 units del C Track: CC1.1–CC1.2)
 - Frontend renderiza el grafo como SVG interactivo: nodos agrupados por Course, edges, estados visuales
+- C Track visible como entrada al grafo; nodos de Rust, Compilers y OS visibles pero locked con tooltips
 - Hover en nodo locked → tooltip con requisitos
 - Click en nodo available → entra al lab de ese concepto
 - Progress persiste en SQLite: completar un ejercicio cambia el estado del nodo en el tree
@@ -55,14 +58,15 @@
 ---
 
 ## M5 — "Un lab completo de punta a punta"
-**Resultado**: el concepto `variables-types` D1 existe como experiencia real de aprendizaje.
+**Resultado**: la unidad `c-syntax` D1 (CC1.2.1 — Variables, tipos primitivos, I/O) existe como experiencia real de aprendizaje.
 
-- Lab con prosa real, visualización simple (diagrama de tipos en SVG), y 2–3 ejercicios con tests
-- Tests corren en el backend y el resultado aparece en el output panel (pass/fail por test)
-- Completar todos los ejercicios → el nodo en el skill tree cambia a `completed` → desbloquea el siguiente
-- El contenido está escrito con el nivel de rigor y tono del proyecto
+- Lab con prosa real, visualización simple (diagrama de tipos primitivos en SVG: tamaños, rangos), y 2–3 ejercicios con tests en gcc
+- Tests corren en el backend (Docker con gcc) y el resultado aparece en el output panel (pass/fail por test)
+- Completar todos los ejercicios → el nodo en el skill tree cambia a `completed` → desbloquea CC1.2.2
+- El contenido está escrito con el nivel de rigor y tono del proyecto (directo, sin "easy"/"just")
+- La pregunta `¿Por qué así?` aparece al final y la respuesta se guarda en SQLite
 
-**Valor**: el ciclo completo de aprendizaje funciona: teoría → práctica → feedback → progresión.
+**Valor**: el ciclo completo de aprendizaje funciona: teoría → práctica → feedback → progresión → cierre reflexivo.
 
 ---
 

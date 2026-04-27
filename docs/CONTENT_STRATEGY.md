@@ -2,16 +2,16 @@
 
 ## Scale
 
-This curriculum is large. Not "large for an online course" — large in the sense of a graduate program compressed into self-directed study. The full content will take a serious learner 12–24 months to complete properly.
+This curriculum is large. Not "large for an online course" — large in the sense of a graduate program compressed into self-directed study. The full content will take a serious learner 18–30 months to complete properly.
 
 Rough scale:
-- 3 tracks (Rust Core + Compilers + OS)
-- ~8 courses per track = ~24 courses total
-- ~3 modules per course = ~72 modules
-- ~3 units per module = ~216 units
-- ~2 labs per unit = ~432 labs (some units have 1, some have 5)
-- ~4 blocks per lab on average = ~1700 blocks
-- 4 cross-pillar projects + 5 integration labs
+- 4 tracks (C + Rust + Compilers + OS)
+- C: 3 courses, Rust: 8 courses, Compilers: 5 courses, OS: 6 courses = ~22 courses total
+- ~3 modules per course = ~66 modules
+- ~3 units per module = ~200 units
+- ~2–3 Action-IDEs per unit = ~500 Action-IDEs
+- ~4 blocks per Action-IDE on average = ~2000 blocks
+- 4 cross-track projects + 5 integration labs
 - Hundreds of external references
 
 Content will be developed in phases. Labs within a module can be published incrementally. Locked labs with "coming soon" state are preferable to broken or shallow labs.
@@ -23,6 +23,11 @@ Content will be developed in phases. Labs within a module can be published incre
 Forja does not invent its own explanations from scratch. It synthesizes from:
 
 ### Books (primary sources)
+
+**C:**
+- *The C Programming Language* (Kernighan, Ritchie) — K&R, the canonical reference
+- *C Programming: A Modern Approach* (King) — clearest pedagogical treatment of C
+- *Hacking: The Art of Exploitation* (Erickson) — for the reverse engineering and exploitation modules
 
 **Rust:**
 - *The Rust Programming Language* (Klabnik, Nichols) — canonical reference
@@ -293,27 +298,33 @@ Cross-track connections are explicit. When the OS course on virtual memory refer
 
 ## Content Phases
 
-### Phase 1: Core Rust (MVP)
-Complete Rust Core Courses 1–4 (Memory, Ownership, Types, Error Handling).
-~24 labs. Sufficient for a learner to write real Rust.
+### Phase 1: C Track (MVP entry point)
+Complete C Track CC1–CC3 (toolchain, syntax, memory, pointers, heap, assembly, reverse engineering).
+~22 units. The student has seen the machine directly — Valgrind, objdump, x86-64 ASM, stack frames.
+Unlocks: Rust Track.
 
-### Phase 2: Compilers Front End + Semantics
-Compilers Courses A–B (Lexing through Semantics).
+### Phase 2: Rust Core Foundation
+Rust Track RC1–RC3 (tooling, types, control flow, structs, enums, memory model, ownership, borrowing, lifetimes).
+~18 units. The student can write real Rust and understand why each constraint exists.
+Unlocks: Compilers Track A–B.
+
+### Phase 3: Rust Core Complete + Compilers Front End
+Rust Track RC4–RC5 (type system, traits, generics, collections, error handling) + Compilers Courses A–B (lexing, parsing, semantics).
 Project `rlox` unlocked.
-~24 labs.
+~20 units.
 
-### Phase 3: Rust Advanced + OS Foundation
-Rust Core Courses 5–6 (Concurrency, Unsafe) + OS Courses A–C (Bare Metal, Interrupts, Memory).
+### Phase 4: Concurrency + OS Foundation
+Rust Track RC6–RC7 (concurrency, unsafe, no_std) + OS Courses A–C (bare metal, interrupts, memory).
 Integration Labs I1 and I2 unlocked.
-~24 labs.
+~18 units. Unlocks: OS Track.
 
-### Phase 4: Full Compilers + Full OS
-Compilers Courses C–E (IR, Optimization, Codegen arc) + OS Courses D–F (Processes, FS, Concurrency).
+### Phase 5: Full Compilers + Full OS
+Rust RC8 (macros, FFI) + Compilers Courses C–E (IR, optimization, codegen arc) + OS Courses D–F (processes, FS, concurrency).
 All projects unlocked. Integration Labs I3–I5 unlocked.
-~36 labs.
+~40 units.
 
-### Phase 5: Depth extensions
-Deep dives beyond the main curriculum: type theory, formal verification, kernel networking, JIT compilation, persistent data structures, lock-free algorithms. These are non-required "sidebar" modules for learners who want to go further.
+### Phase 6: Depth extensions
+Deep dives beyond the main curriculum: type theory, formal verification, kernel networking, JIT compilation, persistent data structures, lock-free algorithms. Non-required "sidebar" modules for learners who want to go further.
 
 ---
 
@@ -332,16 +343,3 @@ annotation: "The official explanation. Read this after completing ex-2 if the bo
 
 References to books (copyrighted) link to the book's page or a freely available section, never to pirated content. For books like OSTEP that are freely available, direct links are appropriate.
 
----
-
-## Quality Bar
-
-A lab ships when:
-- All exercises have a correct solution verified by the test suite
-- All exercises have been attempted by at least one person who is not the author
-- The visualization blocks (if any) accurately represent the concept
-- Estimated time is within 15 minutes of actual time for the target audience
-- No prose says "as we saw in the previous section" (labs must be independently readable given prerequisites)
-- No prose uses "easy", "simple", "obvious", "just", "trivially" — if it were obvious, we wouldn't be writing a lab about it
-- Theory blocks are connected to exercises (theory-of-coverage check: every prose block exists because an exercise needs or follows it)
-- Portal/anchor blocks are positioned at the right moment (portal after the concept has been encountered; anchor at the point of likely confusion, not at the top of the lab)

@@ -55,11 +55,11 @@ depth 3 is there.
 ## Content Hierarchy
 
 ```
-Pillar (3: Rust Core, Compilers, OS)
-  └── Course  (8-10 per pillar — the student's orientation unit)
+Track (4: C, Rust, Compilers, OS)
+  └── Course  (3–8 per track — the student's orientation unit)
         └── Module  (2-4 per course)
               └── Unit    (2-4 per module — one concept + its depths)
-                    └── Lab     (1-5 per unit — one learning session)
+                    └── Action-IDE  (2-4 per unit — one learning interaction)
                           └── Block  (atomic content unit)
 ```
 
@@ -90,6 +90,54 @@ just visible lines. See [UI_DESIGN.md](UI_DESIGN.md) for the visual spec.
 ⇠  means "anchor: this points back to" (Rust Core)
 ↔  means "xref: mirror concept in" (OS ↔ Compilers)
 ```
+
+---
+
+## C Track Pillar
+
+**Entry point — no prerequisites.**
+
+Root (always unlocked):
+```
+[c-toolchain]          (D1-D2)   gcc, WSL2, la cadena de compilación
+[c-syntax]             (D1)      variables, tipos, control de flujo, funciones, arrays
+[c-memory-layout]      (D1-D2)   secciones Text/Data/BSS/Stack/Heap, nm, readelf
+[c-types-machine]      (D1-D2)   sizeof, complemento a dos, operadores de bits, stack frame
+```
+
+Tier 1 (unlocked by Root D1):
+```
+[c-toolchain] D1  → [c-pointers]      (D1-D3)   & y *, aritmética, arrays/strings, NULL, void*, const
+[c-syntax]    D1  → [c-pointers]
+```
+
+Tier 2 (unlocked by pointers):
+```
+[c-pointers] D1   → [c-heap]          (D1-D2)   malloc/free/Valgrind/errores clásicos
+[c-pointers] D1   → [c-structs]       (D1-D2)   structs, alignment, unions, punteros a función
+[c-pointers] D1   → [c-preprocessor]  (D1-D2)   macros, headers, include guards, compilación condicional
+```
+
+Tier 3 (assembly and reverse engineering):
+```
+[c-structs] D1 + [c-memory-layout] D2 → [c-asm]    (D1-D2)   registros x86-64, gcc -S, calling convention
+[c-asm]    D1                          → [c-reveng] (D2-D3)   objdump, lógica de control en ASM, parchear binarios
+```
+
+**[c-pointers] D2**: Arrays, strings, NULL, void*, const.
+*⇢ portal: "El aritmética de punteros es la instrucción LEA" → Compilers [codegen-riscv] D1*
+
+**[c-heap] D2**: Dangling pointer, use-after-free, buffer overflow, double free.
+*⇢ portal: "Escribiste un use-after-free. Rust lo hace imposible en compile time." → Rust [ownership] D1* ← **PRIMARY PORTAL TO RUST**
+*⇢ portal: "malloc llama a brk/mmap" → OS [physical-memory] D1*
+
+**[c-asm] D2**: Calling convention — System V AMD64 ABI.
+*⇢ portal: "La ABI que leíste es lo que tu backend debe generar" → Compilers [codegen-calling-conventions] D1*
+*↔ xref: OS [context-switching] D1 — the OS saves exactly these registers*
+
+**[c-reveng] D3**: Parchear un binario.
+*⇢ portal: "Leer un binario es lo que hace el linker/loader" → Compilers [codegen-elf] D1*
+*⇢ portal: "El loader mapea estas secciones en páginas de memoria virtual" → OS [bare-metal-boot] D1*
 
 ---
 
@@ -326,6 +374,20 @@ Root unlock: **Rust Core [unsafe] D1 + [stack-heap] D2**
 ## Cross-Pillar Unlocks (Full List)
 
 ```
+--- C → Rust (PRIMARY) ---
+C [c-heap] D2            ⇢ portal → Rust [ownership] D1          ← PRIMARY PORTAL: use-after-free → borrow checker
+C [c-heap] D2            ⇢ portal → OS [physical-memory] D1       brk/mmap → kernel allocator
+
+--- C → Compilers ---
+C [c-pointers] D2        ⇢ portal → Compilers [codegen-riscv] D1  pointer arithmetic → LEA instruction
+C [c-asm] D2             ⇢ portal → Compilers [codegen-calling-conventions] D1  System V AMD64 ABI → what codegen must emit
+C [c-reveng] D3          ⇢ portal → Compilers [codegen-elf] D1    objdump → ELF sections/linker
+
+--- C → OS ---
+C [c-asm] D2             ↔ xref  ↔ OS [context-switching] D1      calling convention → what OS saves/restores
+C [c-reveng] D3          ⇢ portal → OS [bare-metal-boot] D1       ELF sections → loader maps to pages
+
+--- Rust → Compilers / OS ---
 Rust [ownership] D1      ⇢ portal → Compilers [semantic-analysis] D1
 Rust [ownership] D2      ⇢ portal → OS [kernel-sync] D1
 Rust [traits] D1         ⇢ portal → Compilers [ir-basics] D1
@@ -333,12 +395,14 @@ Rust [unsafe] D1         ⇢ portal → OS [virtual-memory] D1
 Rust [unsafe] D3         ⇢ portal → Integration Lab I1
 Rust [async-await] D2    ↔ xref  ↔ OS [scheduling] D2
 
+--- Compilers ↔ OS ---
 Compilers [type-checking] D2     ↔ xref ↔ Rust [ownership] D2
 Compilers [codegen-riscv] D1     ↔ xref ↔ OS [bare-metal-boot] D2
 Compilers [codegen-calling-conventions] D1 ↔ xref ↔ OS [context-switching] D1
 Compilers [codegen-elf] D1       ↔ xref ↔ OS [process-model] D1
 Compilers [codegen-elf] D2       ↔ xref ↔ OS [paging-sv39] D1
 
+--- Anchors (return to Rust from OS/Compilers) ---
 OS [virtual-memory] D1   ⇠ anchor ← Rust [ownership] D2
 OS [paging-sv39] D1      ⇠ anchor ← Rust [stack-heap] D2
 OS [context-switching] D1 ↔ xref ↔ Compilers [codegen-calling-conventions] D1
@@ -377,23 +441,24 @@ Integration labs are shown in the skill tree as distinct nodes — neither in th
 The learner opens Forja for the first time. They see:
 
 ```
-Welcome to Forja.
+Bienvenido a Forja.
 
-You are starting with four unlocked concepts. Complete them in any
-order. Each one will open new paths.
+Empezás por el principio: C y Linux.
+No hay prerequisitos. Hay cuatro conceptos desbloqueados.
 
-  ○ Tooling            [~20 min]  rustc, cargo, your first program
-  ○ Variables & Types  [~30 min]  let, mut, the scalar type system
-  ○ Control Flow       [~25 min]  if, match, loops
-  ○ Functions          [~20 min]  fn, parameters, return
+  ○ El entorno        [~25 min]  WSL2, gcc, tu primer programa en C
+  ○ La cadena         [~30 min]  preprocesador → compilador → ensamblador → linker
+  ○ Inspección        [~25 min]  objdump, readelf, nm — leer lo que gcc produjo
+  ○ La sintaxis       [~30 min]  variables, tipos, printf, scanf
 
-Below is the skill tree. The shape of what you'll know when you're done.
+Debajo está el árbol de habilidades.
+La forma de lo que vas a saber cuando termines.
 ```
 
 The skill tree is rendered in full — grey nodes for locked concepts, with labels visible.
-The learner sees the scope of the map. They can click on any locked node to see what
-it requires. Cross-track edges are visible (but dim) from day 1 — the student can see
-that some Rust concepts eventually open doors into other territories.
+The learner sees the scope of the map from day 1: C at the root, Rust as the next layer,
+Compilers and OS as destinations. Cross-track edges are visible (but dim) — the student
+can see that C concepts open doors into Rust, and Rust opens doors into OS and Compilers.
 
 ---
 
@@ -403,13 +468,15 @@ The graph doesn't have a fixed pace. But as a reference:
 
 | Milestone | Approximate depth |
 |-----------|------------------|
-| "Can write real Rust" | Rust Core Courses 1–2 complete |
-| "Understands why Rust is the way it is" | Rust Core Courses 1–3 complete |
-| "Can write a tree-walking interpreter" | Rust C1-2 + Compilers A–B |
+| "Reads the machine directly" | C Track CC1–CC2 complete (~40 h) |
+| "Understands why Rust exists" | C Track CC1–CC3 complete (~60 h) |
+| "Can write real Rust" | Rust RC1–RC2 complete after C (~40 h) |
+| "Understands why Rust is the way it is" | Rust RC1–RC3 complete |
+| "Can write a tree-walking interpreter" | Rust RC1-RC2 + Compilers A–B |
 | "Can write a compiler to machine code" | Full Compilers track |
-| "Can write OS kernel components" | Rust C1-5 + Full OS track |
-| "Forja complete" | All three tracks, all depths, all integration labs |
+| "Can write OS kernel components" | Rust RC1-RC5 + Full OS track |
+| "Forja complete" | All four tracks, all depths, all integration labs |
 
-Reaching "can write real Rust" takes ~40–60 hours of focused work for someone starting
-from scratch. The full curriculum is 400–700 hours. It is not designed to be completed
-quickly.
+Reaching "can write real Rust" — starting from zero — takes ~100 hours total: C Track first
+(~60 h), then Rust RC1-RC2 (~40 h). Someone who already knows C can start Rust directly.
+The full curriculum is 500–800 hours. It is not designed to be completed quickly.
