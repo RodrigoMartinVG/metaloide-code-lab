@@ -11,7 +11,8 @@
       "Bash(grep -v '^\\\\s*//')",
       "Bash(node -e ' *)",
       "Bash(node /c/Users/rodrigo/Documents/programming-labs/check_js.js)",
-      "Bash(node check_js.js)"
+      "Bash(node check_js.js)",
+      "Bash(cargo build *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\rodrigo\\.claude\\projects\\c--Users-rodrigo-Documents-programming-labs\\memory"

@@ -1,145 +1,156 @@
 import './styles/tokens.css'
 import { LitElement, html, css } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import type { ConceptNode, Pillar } from './data/mock.js'
-import { MOCK_NODES, MOCK_EDGES, MOCK_LABS, MOCK_C_NODES, MOCK_C_EDGES, MOCK_C_LABS } from './data/mock.js'
+import type { Pillar, Route } from './types.js'
+import { ALL_TRACKS, getTrack, getUnit, getLab } from './data/mock.js'
 
 import './components/forja-topbar.js'
-import './components/forja-skill-tree.js'
-import './components/forja-lab-view.js'
-
-type View = { kind: 'tree' } | { kind: 'lab'; conceptId: string; depth: number }
+import './components/forja-track-map.js'
+import './components/forja-unit-blog.js'
+import './components/forja-unit-studio.js'
 
 @customElement('forja-app')
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 class ForjaApp extends LitElement {
-  @state() private _pillar: Pillar = 'c'
-  @state() private _view: View = { kind: 'tree' }
+  @state() private _route: Route = { view: 'track-map', trackId: 'c' }
 
   static styles = css`
     :host {
-      display: flex;
+      display:        flex;
       flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
+      height:         100vh;
+      overflow:       hidden;
     }
 
     .main {
-      flex: 1;
+      flex:       1;
       margin-top: var(--topbar-height);
+      overflow:   hidden;
+      display:    flex;
+    }
+
+    .map-scroll {
+      flex:       1;
+      overflow-y: auto;
+    }
+
+    .unit-wrap {
+      flex:     1;
       overflow: hidden;
-      display: flex;
+      display:  flex;
     }
 
-    .tree-container {
-      flex: 1;
-      padding: var(--space-2xl);
-      overflow: auto;
-    }
-
-    .lab-container {
-      flex: 1;
-      overflow: hidden;
-      display: flex;
-    }
-
-    .empty-pillar {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    .empty-track {
+      flex:            1;
+      display:         flex;
+      flex-direction:  column;
+      align-items:     center;
       justify-content: center;
-      color: var(--text-muted);
-      font-size: 14px;
-      gap: var(--space-sm);
-    }
-
-    .empty-pillar strong {
-      color: var(--text-secondary);
-      font-size: 16px;
+      color:           var(--text-muted);
+      font-size:       14px;
+      gap:             8px;
     }
   `
 
-  private _onPillarChange(e: CustomEvent) {
-    this._pillar = e.detail
-    this._view = { kind: 'tree' }
+  private get _activePillar(): Pillar {
+    return this._route.view === 'track-map'
+      ? this._route.trackId
+      : this._route.trackId
   }
 
-  private _onConceptSelect(e: CustomEvent<ConceptNode>) {
-    const node = e.detail
-    this._view = { kind: 'lab', conceptId: node.id, depth: node.depth }
+  private _breadcrumb(): string {
+    if (this._route.view !== 'unit') return ''
+    const found = getUnit(this._route.unitId)
+    if (!found) return ''
+    const track = getTrack(found.track.id)
+    return `${track?.label ?? ''} › ${found.course.name} › ${found.unit.name}`
   }
 
-  private _onNavTree() {
-    this._view = { kind: 'tree' }
+  private _onPillarChange(e: CustomEvent<Pillar>) {
+    this._route = { view: 'track-map', trackId: e.detail }
   }
 
-  private _allNodes() { return [...MOCK_C_NODES, ...MOCK_NODES] }
-  private _allLabs()  { return { ...MOCK_C_LABS, ...MOCK_LABS } }
-
-  private _pillarLabel(p: Pillar): string {
-    if (p === 'c')  return 'C'
-    if (p === 'os') return 'Operating Systems'
-    return p.charAt(0).toUpperCase() + p.slice(1)
+  private _onNavMap() {
+    this._route = { view: 'track-map', trackId: this._activePillar }
   }
 
-  private _getBreadcrumb(): string {
-    if (this._view.kind !== 'lab') return ''
-    const v = this._view as { kind: 'lab'; conceptId: string; depth: number }
-    const node = this._allNodes().find(n => n.id === v.conceptId && n.depth === v.depth)
-    if (!node) return ''
-    return `${this._pillarLabel(this._pillar)} › ${node.name} › Depth ${node.depth}`
-  }
-
-  private _getCurrentLab() {
-    if (this._view.kind !== 'lab') return null
-    const v = this._view as { kind: 'lab'; conceptId: string; depth: number }
-    return this._allLabs()[`${v.conceptId}-${v.depth}`] ?? null
+  private _onUnitSelect(e: CustomEvent<{ unitId: string; trackId: Pillar }>) {
+    this._route = { view: 'unit', unitId: e.detail.unitId, trackId: e.detail.trackId }
   }
 
   render() {
-    const isLab = this._view.kind === 'lab'
-    const allNodes = this._allNodes()
-    const filteredNodes = allNodes.filter(n => n.pillar === this._pillar)
-    const filteredEdges = (this._pillar === 'c' ? MOCK_C_EDGES : MOCK_EDGES).filter(e => {
-      const from = allNodes.find(n => n.id === e.from.id)
-      return from?.pillar === this._pillar
-    })
-
     return html`
       <forja-topbar
-        .pillar=${this._pillar}
-        .view=${this._view.kind}
-        .breadcrumb=${this._getBreadcrumb()}
+        .activePillar=${this._activePillar}
+        .route=${this._route}
+        .breadcrumb=${this._breadcrumb()}
         @pillar-change=${this._onPillarChange}
-        @nav-tree=${this._onNavTree}
+        @nav-map=${this._onNavMap}
       ></forja-topbar>
 
-      <div class="main">
-        ${isLab ? html`
-          <div class="lab-container">
-            <forja-lab-view .lab=${this._getCurrentLab()}></forja-lab-view>
-          </div>
-        ` : html`
-          <div class="tree-container">
-            ${filteredNodes.length ? html`
-              <forja-skill-tree
-                .nodes=${filteredNodes}
-                .edges=${filteredEdges}
-                .pillar=${this._pillar}
-                @concept-select=${this._onConceptSelect}
-              ></forja-skill-tree>
-            ` : html`
-              <div class="empty-pillar">
-                <strong>${this._pillar.charAt(0).toUpperCase() + this._pillar.slice(1)}</strong>
-                <span>Content coming in a future milestone.</span>
-              </div>
-            `}
-          </div>
-        `}
+      <div class="main" @unit-select=${this._onUnitSelect}>
+        ${this._route.view === 'track-map'
+          ? this._renderTrackMap()
+          : this._renderUnit()
+        }
+      </div>
+    `
+  }
+
+  private _renderTrackMap() {
+    const track = getTrack(this._route.trackId as string)
+    if (!track) return html`<div class="empty-track"><span>Track not found.</span></div>`
+
+    return html`
+      <div class="map-scroll">
+        <forja-track-map .track=${track}></forja-track-map>
+      </div>
+    `
+  }
+
+  private _renderUnit() {
+    if (this._route.view !== 'unit') return null
+
+    const found = getUnit(this._route.unitId)
+    const lab   = getLab(this._route.unitId)
+
+    if (!found || !lab) {
+      return html`
+        <div class="empty-track">
+          <strong style="color:var(--text-secondary)">Unit not found</strong>
+          <span>No content available for ${this._route.unitId} yet.</span>
+        </div>
+      `
+    }
+
+    const { unit, course, track } = found
+
+    if (unit.renderMode === 'blog') {
+      return html`
+        <div class="unit-wrap">
+          <forja-unit-blog
+            .unit=${unit}
+            .lab=${lab}
+            .trackColor=${track.color}
+            .courseName=${course.name}
+          ></forja-unit-blog>
+        </div>
+      `
+    }
+
+    return html`
+      <div class="unit-wrap">
+        <forja-unit-studio
+          .unit=${unit}
+          .lab=${lab}
+          .trackColor=${track.color}
+          .courseName=${course.name}
+        ></forja-unit-studio>
       </div>
     `
   }
 }
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _tracksPreload = ALL_TRACKS  // ensures mock data is loaded
 
 document.querySelector('#app')!.innerHTML = '<forja-app></forja-app>'
