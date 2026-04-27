@@ -31,6 +31,25 @@ Full unit-level specification for the OS Track. Includes BlogPost structure at e
 
 ---
 
+## El Arco del Kernel: irk
+
+A lo largo de este track construís un único kernel — `irk` (Incipient RISC-V Kernel). No es un conjunto de demos independientes: es una base de código que crece Course a Course en el mismo repositorio. Cada checkpoint entrega un kernel más capaz que el anterior, y el siguiente Course parte exactamente de ese estado.
+
+El repositorio `forja-labs/irk` tiene una branch de inicio por Course. La branch `course-b-start` es el estado de referencia al final de Course A — si completaste el checkpoint A, ya tenés eso. No hay fusiones manuales.
+
+| Al finalizar Course | El kernel puede... |
+|---|---|
+| A — Metal Desnudo | Bootear en QEMU, imprimir por UART desde Rust, ejecutar en S-mode |
+| B — Interrupciones | Manejar traps, disparar el timer, correr 3 threads con round-robin preemptivo |
+| C — Memoria | Frame allocator funcionando, Sv39 activo, kernel en el espacio alto de direcciones |
+| D — Procesos | Correr procesos de user space aislados, atender syscalls write y exit |
+| E — Filesystems | Leer archivos de un disco FAT32 desde user space vía VFS |
+| F — Concurrencia | Sincronizar acceso a estado compartido sin races ni deadlocks |
+
+**Course F = Proyecto irk.** Completar el checkpoint de Course F es equivalente a completar el proyecto `irk` del catálogo de proyectos. No hay entrega separada — `make test-irk` verde cierra el proyecto en el skill tree.
+
+---
+
 ## Course A — Metal Desnudo
 
 **Course BlogPost**: "Antes del sistema operativo"
@@ -192,6 +211,19 @@ Action-IDEs at course level:
 
 ---
 
+### Course Checkpoint — irk A
+
+**Estado al entrar**: repositorio vacío — solo linker script y stub de assembly mínimo.
+**Estado al salir**: el kernel bootea en QEMU, imprime por UART desde Rust, configura M-mode y transiciona a S-mode.
+
+**project-action**
+- **Repositorio**: `forja-labs/irk`, branch `course-a-start`
+- **Objetivo**: el kernel imprime `irk v0.1 — booting...` por UART y cuelga en un loop infinito en S-mode; QEMU no sale con error
+- **Verificación**: `make test-a` — lanza QEMU headless, verifica que la cadena aparece en stdout antes del timeout de 5 segundos
+- **Tiempo estimado**: ~3 horas
+
+---
+
 ## Course B — Interrupciones y Excepciones
 
 **Course BlogPost**: "Cuando el CPU hace otra cosa"
@@ -346,6 +378,19 @@ Action-IDEs at course level:
 
 ---
 
+### Course Checkpoint — irk B
+
+**Estado al entrar**: bootea, UART, S-mode — sin traps, sin timer, sin threads.
+**Estado al salir**: trap handler completo, timer cada 100 ms, 3 kernel threads se turnan en round-robin preemptivo.
+
+**project-action**
+- **Repositorio**: `forja-labs/irk`, branch `course-b-start` (= checkpoint A completo)
+- **Objetivo**: tres threads imprimen su ID en round-robin accionado por el timer; si uno entra en loop infinito, los otros dos siguen corriendo
+- **Verificación**: `make test-b` — verifica interleaving de los tres IDs; verifica que el timer re-arma `mtimecmp`; verifica que el handler distingue `ecall` de `ebreak` correctamente
+- **Tiempo estimado**: ~4 horas
+
+---
+
 ## Course C — Gestión de Memoria
 
 **Course BlogPost**: "La ilusión del espacio propio"
@@ -376,6 +421,8 @@ Action-IDEs at course level:
 - Discovering available RAM: the device tree describes the physical memory map; in QEMU virt, RAM starts at `0x8000_0000`
 - The range to manage: skip kernel code/data; allocate from `end_of_kernel` to `end_of_ram`
 - Alignment: physical frames must be aligned to their size; allocations must be page-aligned
+- En Linux real: `/proc/meminfo` expone los contadores del frame allocator al user space — `MemTotal`, `MemFree`, `MemAvailable`; `MemAvailable` ≠ `MemFree` porque Linux incluye frames en caché que puede reclamar
+- El OOM killer: cuando el frame allocator no puede satisfacer una solicitud, Linux invoca el OOM killer — elige un proceso para matar según su `oom_score` (proporcional al uso de memoria); en este kernel, simplemente pánico
 
 **Action-IDEs**:
 - `stepper` — the memory map at boot: kernel occupies `0x8000_0000..0x8010_0000`; available frames start at `0x8010_0000`; each allocation advances the pointer
@@ -430,6 +477,7 @@ Action-IDEs at course level:
 **Action-IDEs**:
 - `mini-sim` — the collision scenario: two processes compiled to the same address; try to load both into physical memory; observe the conflict
 - `reveal` — why compilers can assume `0x0` is invalid: it is convention, enforced by the kernel mapping no page at address 0; a null pointer dereference produces a page fault because nothing is mapped there
+- `reveal` — por qué un contenedor Docker no puede ver la memoria de otro: Docker llama a `clone(CLONE_NEWPID | CLONE_VM)` para crear procesos con espacios de direcciones separados. El aislamiento de memoria no es una feature de Docker — es exactamente lo que acabas de ver: cada proceso tiene su propia tabla de páginas y el hardware rechaza accesos cruzados. Docker no añade nada; explota lo que el kernel ya provee.
 
 **Closing question**: ¿Por qué se eligió hacer la traducción en hardware (MMU) en lugar de en software? ¿Qué costaría cada acceso a memoria si la traducción fuera un syscall?
 
@@ -447,6 +495,7 @@ Action-IDEs at course level:
 - Permission flags: V (valid), R (readable), W (writable), X (executable), U (user-accessible)
 - Leaf PTE vs. pointer PTE: a PTE with R=0, W=0, X=0 is a pointer to the next level; a leaf has at least one of R/W/X set
 - The kernel mapping: the kernel maps its own physical frames at a fixed high virtual address (e.g., `0xFFFF_FFC0_8000_0000`) — present in every process's page table
+- En Linux real: `mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_ANONYMOUS, -1, 0)` le pide al kernel que añada un rango de PTEs al espacio de direcciones del proceso. El kernel no asigna frames físicos todavía — sólo actualiza la tabla de páginas con PTEs inválidos marcados como "demanda". El frame se asigna cuando el proceso accede a la página y causa un page fault. Es exactamente `map_page` con un nivel más de indirección.
 
 **Action-IDEs**:
 - `stepper` — decomposing a virtual address: split `0x0000_0000_0010_1234` into VPN[2], VPN[1], VPN[0], and offset; identify the three page table indices and the byte offset within the final page
@@ -481,6 +530,8 @@ Action-IDEs at course level:
 
 **Xrefs**:
 - ↔ Compilers E.4.1: "The page permissions (.text = RX, .data = RW, .rodata = R) are the same flags you set in page table entries here."
+
+**En Linux real**: la raíz de la tabla de páginas por proceso se llama `pgd` (Page Global Directory) en el PCB (`task_struct->mm->pgd`). Cuando Linux hace `fork()`, copia el `pgd` del padre para el hijo (copy-on-write). Cuando Docker crea un contenedor, cada proceso dentro del contenedor tiene su propio `pgd` — la misma estructura que estás implementando aquí. Podés verlo en Linux 0.11: `fork.c:copy_page_tables()`.
 
 **Closing question**: ¿Por qué Sv39 usa tres niveles en lugar de una tabla plana? ¿Cuánta memoria ocuparía una tabla plana para el espacio de direcciones de 39 bits?
 
@@ -530,6 +581,19 @@ Action-IDEs at course level:
 
 ---
 
+### Course Checkpoint — irk C
+
+**Estado al entrar**: traps, timer, 3 threads — todo corriendo en direcciones físicas con la MMU desactivada.
+**Estado al salir**: frame allocator funcionando, Sv39 activo, kernel mapeado en el espacio alto de direcciones, memoria virtual habilitada.
+
+**project-action**
+- **Repositorio**: `forja-labs/irk`, branch `course-c-start`
+- **Objetivo**: activar Sv39 sin que el kernel se caiga; el kernel sigue imprimiendo por UART después de escribir `satp`; asignar y liberar 100 frames sin double-allocation ni leak
+- **Verificación**: `make test-c` — kernel sobrevive el enable del MMU; test del allocator: allocate all → free half → re-allocate half → verificar que no hay frames perdidos ni duplicados
+- **Tiempo estimado**: ~5 horas
+
+---
+
 ## Course D — Procesos
 
 **Course BlogPost**: "Múltiples programas, una CPU"
@@ -559,6 +623,8 @@ Action-IDEs at course level:
 - Process states: `READY` (can run, waiting for CPU), `RUNNING` (currently on CPU), `BLOCKED` (waiting for I/O or event), `ZOMBIE` (exited, waiting for parent to collect status)
 - Process creation: `fork()` semantics (copy the parent's address space); `exec()` semantics (replace the address space with a new binary); for this kernel, a simpler `spawn(entry: fn())` is sufficient
 - The process ID (PID): a monotonically increasing integer; unique per process; reused after the process exits and is reaped
+- En Linux real: `ps aux` muestra el estado de cada proceso en la columna STAT — `R` (running/ready), `S` (sleeping = blocked interruptible), `D` (blocked uninterruptible, normalmente I/O), `Z` (zombie), `T` (stopped); el PCB que implementarás tiene exactamente esos estados
+- `/proc/PID/status` expone los campos del PCB al user space: `VmRSS` (memoria residente), `State`, `PPid`, `Threads`; todo lo que guarda el kernel en `task_struct`
 
 **Action-IDEs**:
 - `mini-sim` — process state machine: click buttons to trigger transitions (schedule, block, unblock, exit); observe state changes
@@ -611,9 +677,11 @@ Action-IDEs at course level:
 - The switch: `sd` all callee-saved regs to `current.context`; `ld` all callee-saved regs from `next.context`; `ret` (jumps to `next.context.ra`)
 - First run of a new process: `context.ra` = the entry function; `context.sp` = the top of the kernel stack
 - The invisible hand-off: from the new process's perspective, `switch_to` was called and now returns with the saved `ra` pointing to its entry point
+- En Linux real: cuando presionás `Ctrl+Z`, el shell envía `SIGTSTP` al proceso en foreground. El kernel cambia el estado del proceso de `RUNNING` a `STOPPED` (`T` en `ps`). Eso no es un context switch activo — es el scheduler que simplemente deja de incluirlo en la cola de ready. `fg` envía `SIGCONT`: el kernel cambia el estado a `READY` y el proceso vuelve a la cola. El context switch ocurre en la próxima oportunidad de scheduling, no en el momento del `SIGCONT`.
 
 **Action-IDEs**:
 - `full-lab` — implement `switch_to` in assembly; create two kernel threads that each loop printing their ID; verify interleaving when `switch_to` is called from a round-robin loop
+- `reveal` — Ctrl+Z y job control en términos del PCB: el proceso no sabe que fue suspendido; su `Context` está intacto en el PCB; cuando el scheduler lo elija de nuevo, `switch_to` carga ese contexto y el proceso continúa desde exactamente donde estaba
 
 **Xrefs**:
 - ↔ Compilers E.3.1: "The callee-saved registers in the RISC-V ABI are exactly the registers the context switch saves — because the ABI contract guarantees they must be preserved across calls."
@@ -660,6 +728,7 @@ Action-IDEs at course level:
 - `yield_cpu()`: set current process state to READY; enqueue it; dequeue the next; call `switch_to`
 - Fairness: every runnable process gets the CPU at most one quantum behind the others; maximum wait = (N–1) × quantum
 - The idle process: a process that loops on `wfi` (wait-for-interrupt); always on the ready queue; prevents an empty queue
+- En Linux real: el `%CPU` que muestra `ps aux` o `top` es la fracción del tiempo en el último segundo que el scheduler eligió ese proceso. Un proceso al 100% agotó su quantum en cada tick. Uno al 0.1% fue elegido una vez en 1000 ticks — o está bloqueado la mayor parte del tiempo esperando I/O.
 
 **Action-IDEs**:
 - `full-lab` — implement round-robin: a `Scheduler` struct with a `VecDeque<Pid>`; `tick()` and `yield_cpu()` methods; three processes that print their PID; verify they appear in repeating order
@@ -681,6 +750,8 @@ Action-IDEs at course level:
 - Why MLFQ approximates "reward short jobs": CPU-bound processes naturally sink to low-priority queues
 - Implementing MLFQ: an array of ready queues indexed by priority level; `tick()` decrements quantum; `unblock()` inserts at the current priority
 - The scheduler in Linux (CFS): the Completely Fair Scheduler uses a red-black tree keyed on virtual runtime; not implemented here but the context for understanding why MLFQ isn't the end state
+- `nice` y `renice` en Linux: ajustan el *nice value* de un proceso (-20 = máxima prioridad, +19 = mínima). CFS convierte el nice value en un *weight*; más weight = más tiempo de CPU por tick. `nice -n 19 ./build.sh` cede CPU a procesos interactivos mientras compila.
+- `schedtool -e` y `chrt`: herramientas para asignar políticas de scheduling real-time (`SCHED_FIFO`, `SCHED_RR`) en Linux — equivalentes directos a lo que implementarás
 
 **Action-IDEs**:
 - `expanded-ide` — implement MLFQ with 3 priority levels: a CPU-bound process and an I/O-bound process; observe that the I/O-bound process stays at high priority and gets low latency
@@ -711,6 +782,7 @@ Action-IDEs at course level:
 **Action-IDEs**:
 - `stepper` — the `ecall` round-trip: user code sets registers; executes `ecall`; hardware saves state, jumps to handler; handler reads `scause` = 8; increments `sepc`; writes result; `sret`; user resumes
 - `reveal` — why `ecall` cannot be replaced by a function call: a function call does not change privilege level; user code calling a kernel function directly would execute it in U-mode where it cannot access S-mode CSRs or kernel memory
+- `reveal` — cómo funciona `strace`: intercepta exactamente este mecanismo usando `ptrace(PTRACE_SYSCALL)`. El kernel notifica al proceso padre (el proceso `strace`) cada vez que el hijo cruza la frontera de `ecall` (entrada) y de `sret` (salida). `strace ls` muestra cada syscall de `ls` con sus argumentos y valor de retorno — el mismo flujo que acabás de implementar, observable desde afuera.
 
 **Xrefs**:
 - ↔ Compilers E.2.2: "`ecall` is the instruction your compiler generates when the program calls `write()` or `exit()`. The codegen emits `li a7, <syscall_num>; ecall`."
@@ -727,6 +799,7 @@ Action-IDEs at course level:
 **Topics**:
 - The RISC-V Linux syscall ABI: syscall number in `a7`; up to 6 arguments in `a0`–`a5`; return in `a0`
 - The syscall table: an array of function pointers indexed by syscall number; the handler reads `frame.a7` and calls `syscall_table[num](frame)`
+- En Linux real: la tabla de syscalls de Linux en x86-64 tiene ~335 entradas, listadas en `arch/x86/entry/syscalls/syscall_64.tbl`; en RISC-V en `include/uapi/asm-generic/unistd.h`. `strace -e trace=read,write,open ls` filtra por syscall — muestra exactamente qué entradas de la tabla se invocan.
 - Error return convention: negative return value = error; `-1` = `EPERM`; the user library converts this to `errno`
 - Argument passing constraints: arguments must be valid user-space addresses or scalar values; the kernel must check each pointer argument before dereferencing
 - For this kernel: `SYS_WRITE = 64`, `SYS_EXIT = 93` — the two minimal syscalls needed to run a program that prints and exits
@@ -753,6 +826,19 @@ Action-IDEs at course level:
 - `full-lab` — implement `sys_write` and `sys_exit`; run a user-space Rust program compiled with `no_std` that prints "hello, os!" and exits with code 42; the test verifies QEMU output and exit code
 
 **Closing question**: ¿Por qué el kernel tiene que validar los punteros del usuario antes de dereferenciarlos? ¿Qué ataque hace posible no validarlos?
+
+---
+
+### Course Checkpoint — irk D
+
+**Estado al entrar**: memoria virtual activa, kernel en espacio alto — sin procesos de usuario ni syscalls.
+**Estado al salir**: dos procesos de user space corren aislados con sus propias tablas de páginas; `write` y `exit` funcionan; ningún proceso puede leer la memoria del otro.
+
+**project-action**
+- **Repositorio**: `forja-labs/irk`, branch `course-d-start`
+- **Objetivo**: cargar dos binarios ELF de user space provistos en el repo; cada uno imprime su ID y llama a `exit(0)`; el kernel no se cae; la memoria del proceso A es inaccesible desde el proceso B
+- **Verificación**: `make test-d` — output contiene ambos IDs; proceso B que intenta leer una dirección del espacio de A recibe un page fault manejado limpiamente; ambos exitan con código 0
+- **Tiempo estimado**: ~6 horas
 
 ---
 
@@ -900,6 +986,7 @@ Action-IDEs at course level:
 - Recovery: on mount, scan from tail to head; find the last committed transaction; replay all its writes to the main filesystem
 - Idempotency: applying a journal entry twice must be safe; filesystem writes are idempotent by design
 - Ordered journaling vs. data journaling: ordered = journal metadata only, ensure data is written before metadata commit; data = journal both data and metadata; full data journaling doubles write traffic
+- En Linux real: `mount -o data=ordered /dev/sda1 /mnt` es el modo predeterminado de ext4 — journaling ordenado. `data=journal` journaliza también los datos de usuario (más seguro, más lento). `data=writeback` no da garantías de orden — más rápido, permite inconsistencias de contenido. El tradeoff es exactamente el que acabás de implementar.
 
 **Action-IDEs**:
 - `full-lab` — implement journal write and recovery: a `Journal` struct that wraps a block device; `begin_transaction()`; `log_block(lba, data)`; `commit()`; `recover()` that replays on mount; test by interrupting after commit but before checkpoint
@@ -925,6 +1012,7 @@ Action-IDEs at course level:
 - The file descriptor table: a per-process array of open `Vnode` references; fd 0/1/2 = stdin/stdout/stderr
 - Mount points: a directory that is associated with a `VfsOps` and a filesystem-specific `Superblock`; path lookup crosses mount points transparently
 - The path through a `read(fd, buf, n)` syscall: `sys_read → fd_table[fd].vnode.ops.read(vnode, buf, n) → fat32_read(...)`
+- En Linux real: `mount` sin argumentos muestra todos los filesystems montados y su tipo. `/proc` y `/sys` son virtual filesystems — no hay disco detrás; el kernel genera los datos en memoria cuando los leés. `df -h` llama a `statfs()` que va por la VFS hasta el superblock de cada filesystem.
 
 **Action-IDEs**:
 - `stepper` — a `read(fd=3, buf, 512)` call traced through VFS: syscall handler → fd table lookup → vnode → ops.read → fat32_read → block_device.read
@@ -951,6 +1039,19 @@ Action-IDEs at course level:
 - `full-lab` — implement the FAT32 VFS backend; connect to `sys_read` and `sys_open`; run a user-space program that opens a file from the FAT32 disk image and prints its contents; the test verifies the output
 
 **Closing question**: ¿Qué tendría que cambiar en tu VFS backend para soportar escrituras? ¿Qué garantías de consistencia tendría que dar la VFS layer?
+
+---
+
+### Course Checkpoint — irk E
+
+**Estado al entrar**: procesos de user space con syscalls write/exit — sin acceso a disco.
+**Estado al salir**: driver VirtIO block + FAT32 read-only + VFS layer; un proceso de usuario puede abrir y leer un archivo del disco imagen.
+
+**project-action**
+- **Repositorio**: `forja-labs/irk`, branch `course-e-start`
+- **Objetivo**: un proceso de usuario abre `/hello.txt` del disco imagen provisto, lee su contenido, lo imprime por stdout, y llama a `exit(0)`
+- **Verificación**: `make test-e` — el output del proceso coincide byte a byte con el contenido del archivo en la imagen; `open` y `read` retornan valores válidos; `exit(0)` limpio sin leak de marcos físicos
+- **Tiempo estimado**: ~5 horas
 
 ---
 
@@ -983,6 +1084,7 @@ Action-IDEs at course level:
 - The spinlock in kernel interrupt handlers: interrupts run on the kernel stack; they cannot sleep; they must use spinlocks
 - Deadlock: if a thread holds a spinlock and then is interrupted by a handler that tries to acquire the same spinlock, the system deadlocks; solution: disable interrupts while holding a spinlock
 - Uniprocessor vs. SMP: on a uniprocessor, simply disabling interrupts is sufficient for mutual exclusion; spinlocks matter for multi-hart systems
+- En Linux real: `spin_lock_irqsave(&lock, flags)` es exactamente "deshabilitar interrupciones + adquirir spinlock" — el mismo patrón. `spin_lock_bh` deshabilita sólo los bottom halves (softirqs), no todas las interrupciones; usado en drivers que no necesitan protegerse de hardware IRQs pero sí de tasklets.
 
 **Action-IDEs**:
 - `inline-action` — for each scenario, spinlock or sleeping mutex? (interrupt handler, scheduler internal queue, disk I/O waiting, short counter increment, waiting for user input)
@@ -1177,6 +1279,21 @@ Action-IDEs at course level:
 - `reveal` — why the Rust atomic types are not just `compiler_fence` on uniprocessor RISC-V: QEMU emulates the RISC-V memory model correctly; on real hardware the relaxed model matters
 
 **Closing question**: ¿Por qué el hardware fence (`fence rw,rw`) es más caro que el compiler fence? ¿Qué tiene que hacer el procesador físicamente para implementarlo?
+
+---
+
+### Course Checkpoint — irk F  *(= Proyecto irk)*
+
+**Estado al entrar**: kernel completo funcional — boot, traps, memoria virtual, procesos aislados, filesystem.
+**Estado al salir**: estado compartido entre procesos protegido por spinlocks y sleeping mutex; prioridades funcionan; el kernel no tiene races bajo carga concurrente.
+
+Este checkpoint **es** el Proyecto irk. No hay entrega separada. `make test-irk` verde cierra el proyecto automáticamente en el skill tree.
+
+**project-action**
+- **Repositorio**: `forja-labs/irk`, branch `course-f-start`
+- **Objetivo**: dos procesos productores y un proceso consumidor comparten una cola circular protegida por un sleeping mutex; ningún ítem se pierde, ningún acceso es concurrente, el consumidor bloquea correctamente cuando la cola está vacía; el test de inversión de prioridad no produce timeout
+- **Verificación**: `make test-irk` — suite completa en secuencia: boot, memoria, aislamiento de procesos, filesystem, sincronización; QEMU no se resetea entre secciones
+- **Tiempo estimado**: ~4 horas
 
 ---
 

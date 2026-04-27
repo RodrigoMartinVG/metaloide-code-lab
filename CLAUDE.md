@@ -145,6 +145,28 @@ Engineering a Compiler, OSTEP, CS:APP, Writing an OS in Rust (blog series), Comp
 
 Documentation phase. No code written yet. Next step: scaffold `backend/` and `web/`.
 
+## Backend Engineering Standards
+
+These rules apply to all backend (`backend/`) Rust code. Enforced from M2 onward.
+
+**Error handling**
+- Zero `.unwrap()` / `.expect()` in the orchestrator without a comment that proves the failure is impossible. Panic is not an error handling strategy.
+- All low-level errors (`io::Error`, socket errors, Docker failures) must be wrapped in semantic types via `thiserror`. Example: `ForjaError::DockerSocketNotFound`, not a raw `io::Error`.
+- Fail-fast: if Docker is unreachable, the sandbox fails, or a subprocess hangs past its timeout, the WebSocket receives a precise error message and the operation stops. No silent degradation, no empty responses.
+
+**Resource lifecycle**
+- Every sandboxed subprocess and ephemeral container must be tied to the backend's lifecycle. If the backend process exits for any reason, containers are destroyed.
+- Implement `Drop` on any handle that owns an external resource (container, subprocess, temp dir). Add a SIGTERM/SIGINT handler that triggers cleanup before exit.
+- No zombie processes. Every spawned child must be `.wait()`ed or explicitly killed.
+
+**Platform**
+- Use `PathBuf` for all file paths — no `String`. Path manipulation via `String` is fragile across platforms.
+- Platform-specific logic (WSL2 path translation, Docker socket location, named pipes) lives in isolated modules, not inlined into business logic.
+
+**Style**
+- Comments explain *why*, not *what*. A comment on `Arc<RwLock<T>>` should state the expected read/write ratio that justifies it over `Mutex`. A comment on a `unsafe` block should state what invariant the caller must uphold.
+- No comments that map Rust to C syscall equivalents throughout the codebase — that belongs in lab content, not backend source.
+
 ## Development
 
 ```bash

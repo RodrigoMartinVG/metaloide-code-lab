@@ -312,9 +312,9 @@ Implement the tree-walking interpreter from _Crafting Interpreters_, in Rust, wi
 Compile a subset of C (integers, pointers, functions, loops) to RISC-V assembly. Output must run in QEMU. Must pass a provided test suite. No libraries allowed except `std`.
 
 ### Project 3: `irk` — A Minimal Kernel
-*Requires: OS Courses A–E, Rust Course 6*
+*Requires: OS Courses A–F complete (the project is completed incrementally through the OS track checkpoints)*
 
-A kernel that boots on RISC-V (QEMU), manages memory, runs two concurrent processes that communicate through a shared ring buffer, and doesn't corrupt memory on a scheduler switch.
+A kernel that boots on RISC-V (QEMU), manages memory with Sv39 paging, runs isolated user-space processes, reads a FAT32 filesystem, and synchronizes concurrent access through spinlocks and sleeping mutexes. Unlike the other projects, `irk` is not started from scratch after the track — it is the same codebase built incrementally through Course checkpoints A–F. Completing Course F checkpoint = project complete.
 
 ### Project 4: `broom` — A Garbage Collector
 *Requires: Rust Courses 1, 2, 6; Compilers Course B (AST)*
