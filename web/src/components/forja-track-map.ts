@@ -9,21 +9,23 @@ export class ForjaTrackMap extends LitElement {
 
   static styles = css`
     :host {
-      display:    block;
-      max-width:  680px;
-      margin:     0 auto;
-      padding:    40px 32px 80px;
+      display:        flex;
+      flex-direction: column;
+      width:          100%;
+      height:         100%;
     }
 
     /* ── Track header ────────────────────────────────────────────────────── */
 
     .track-header {
-      margin-bottom: 32px;
+      padding:       24px 24px 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      flex-shrink:   0;
     }
 
     .track-eyebrow {
       font-family:    var(--font-mono);
-      font-size:      10px;
+      font-size:      9px;
       font-weight:    600;
       letter-spacing: 1.2px;
       text-transform: uppercase;
@@ -32,47 +34,56 @@ export class ForjaTrackMap extends LitElement {
     }
 
     .track-title {
-      font-size:   26px;
+      font-size:   22px;
       font-weight: 700;
       line-height: 1.2;
-      margin:      0 0 6px;
+      margin:      0 0 4px;
     }
 
     .track-tagline {
       font-family: var(--font-mono);
-      font-size:   13px;
+      font-size:   11px;
       font-weight: 500;
       opacity:     0.7;
     }
 
     .prereq-note {
-      margin-top:    16px;
-      padding:       10px 14px;
+      margin-top:    12px;
+      padding:       8px 12px;
       background:    var(--bg-elevated);
       border:        1px solid var(--border-subtle);
       border-radius: 6px;
-      font-size:     12px;
+      font-size:     11.5px;
       color:         var(--text-muted);
       font-style:    italic;
     }
 
     /* ── Course list ─────────────────────────────────────────────────────── */
 
-    .courses {
-      display:        flex;
-      flex-direction: column;
-      gap:            10px;
-    }
-
-    .section-label {
+    .courses-label {
       font-family:    var(--font-mono);
       font-size:      9px;
       font-weight:    600;
       letter-spacing: 1px;
       text-transform: uppercase;
       color:          var(--text-muted);
-      padding:        0 4px;
-      margin:         8px 0 4px;
+      padding:        16px 24px 8px;
+      flex-shrink:    0;
+    }
+
+    .courses {
+      flex:       1;
+      overflow-y: auto;
+      padding:    0 16px 24px;
+      display:    flex;
+      flex-direction: column;
+      gap:        8px;
+    }
+
+    .empty {
+      padding:   32px 24px;
+      font-size: 13px;
+      color:     var(--text-muted);
     }
   `
 
@@ -90,7 +101,7 @@ export class ForjaTrackMap extends LitElement {
       </div>
 
       ${track.courses.length ? html`
-        <div class="section-label">Courses</div>
+        <div class="courses-label">Courses</div>
         <div class="courses">
           ${track.courses.map(course => html`
             <forja-course-card
@@ -100,9 +111,7 @@ export class ForjaTrackMap extends LitElement {
           `)}
         </div>
       ` : html`
-        <div style="color:var(--text-muted);font-size:13px;padding:24px 0">
-          Content for this track is not yet available.
-        </div>
+        <div class="empty">Content for this track is not yet available.</div>
       `}
     `
   }

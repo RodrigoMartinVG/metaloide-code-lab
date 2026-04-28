@@ -30,6 +30,7 @@ export class ForjaUnitStudio extends LitElement {
       flex-direction:column;
       border-right:  1px solid var(--border-subtle);
       overflow:      hidden;
+      flex-shrink:   0;
     }
 
     .theory-header {
@@ -90,6 +91,7 @@ export class ForjaUnitStudio extends LitElement {
     .theory-body {
       flex:       1;
       overflow-y: auto;
+      overflow-x: hidden;
       padding:    24px 24px 40px;
     }
 

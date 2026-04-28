@@ -149,8 +149,12 @@ export class ForjaTopbar extends LitElement {
     this.dispatchEvent(new CustomEvent('pillar-change', { detail: p, bubbles: true, composed: true }))
   }
 
+  private _logoClick() {
+    this.dispatchEvent(new CustomEvent('nav-platform', { bubbles: true, composed: true }))
+  }
+
   private _backClick() {
-    this.dispatchEvent(new CustomEvent('nav-map', { bubbles: true, composed: true }))
+    this.dispatchEvent(new CustomEvent('nav-platform', { bubbles: true, composed: true }))
   }
 
   private _logoSvg() {
@@ -163,12 +167,14 @@ export class ForjaTopbar extends LitElement {
   }
 
   render() {
-    const isUnit = this.route.view === 'unit'
+    const { view } = this.route
+    const isPlatform = view === 'platform'
+    const isFocused  = view === 'study'
 
-    if (isUnit) {
+    if (isFocused) {
       return html`
         <div class="bar">
-          <div class="logo" @click=${this._backClick}>
+          <div class="logo" @click=${this._logoClick}>
             <div class="logo-mark">${this._logoSvg()}</div>
             <span class="logo-word">Forja</span>
           </div>
@@ -177,7 +183,7 @@ export class ForjaTopbar extends LitElement {
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M7.5 2 L3.5 6 L7.5 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            Mapa
+            El Viaje
           </button>
           <span class="breadcrumb"><span>${this.breadcrumb}</span></span>
         </div>
@@ -186,19 +192,22 @@ export class ForjaTopbar extends LitElement {
 
     return html`
       <div class="bar">
-        <div class="logo">
+        <div class="logo" @click=${this._logoClick}>
           <div class="logo-mark">${this._logoSvg()}</div>
           <span class="logo-word">Forja</span>
         </div>
         <div class="sep"></div>
         <div class="pillars">
-          ${(['c', 'rust', 'compilers', 'os'] as Pillar[]).map(p => html`
-            <button
-              class="pillar-btn ${this.activePillar === p ? 'active' : ''}"
-              style=${this.activePillar === p ? `color:${PILLAR_COLOR[p]}` : ''}
-              @click=${() => this._pillarClick(p)}
-            >${PILLAR_LABEL[p]}</button>
-          `)}
+          ${(['c', 'rust', 'compilers', 'os'] as Pillar[]).map(p => {
+            const active = !isPlatform && this.activePillar === p
+            return html`
+              <button
+                class="pillar-btn ${active ? 'active' : ''}"
+                style=${active ? `color:${PILLAR_COLOR[p]}` : ''}
+                @click=${() => this._pillarClick(p)}
+              >${PILLAR_LABEL[p]}</button>
+            `
+          })}
         </div>
         <div class="spacer"></div>
       </div>

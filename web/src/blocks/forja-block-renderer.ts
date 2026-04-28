@@ -5,6 +5,7 @@ import type { Block } from '../types.js'
 import './forja-block-prose.js'
 import './forja-block-code.js'
 import './forja-block-portal.js'
+import './forja-block-nav-card.js'
 import './forja-block-closing-question.js'
 
 // exercise blocks are registered by forja-editor-panel; skip them here
@@ -19,10 +20,11 @@ export class ForjaBlockRenderer extends LitElement {
   render() {
     const b = this.block
     switch (b.type) {
-      case 'prose':            return html`<forja-block-prose .block=${b}></forja-block-prose>`
-      case 'code':             return html`<forja-block-code  .block=${b}></forja-block-code>`
-      case 'portal':           return html`<forja-block-portal .block=${b}></forja-block-portal>`
-      case 'anchor':           return html`<forja-block-portal .block=${b}></forja-block-portal>`
+      case 'prose':            return html`<forja-block-prose    .block=${b}></forja-block-prose>`
+      case 'code':             return html`<forja-block-code     .block=${b}></forja-block-code>`
+      case 'portal':           return html`<forja-block-portal   .block=${b}></forja-block-portal>`
+      case 'anchor':           return html`<forja-block-portal   .block=${b}></forja-block-portal>`
+      case 'nav-card':         return html`<forja-block-nav-card .block=${b}></forja-block-nav-card>`
       case 'closing-question': return html`<forja-block-closing-question .block=${b}></forja-block-closing-question>`
       case 'exercise':         return nothing  // handled by forja-editor-panel
       default:                 return nothing

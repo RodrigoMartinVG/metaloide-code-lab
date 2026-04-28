@@ -28,6 +28,21 @@ pub struct ClosingAnswerPayload {
     pub answer:   String,
 }
 
+// ── GET /api/progress ────────────────────────────────────────────────────────
+// Returns all stored records in one shot so the frontend can hydrate on load.
+
+pub async fn get_all_progress(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<ProgressRecord>>, ForjaError> {
+    let rows: Vec<ProgressRecord> = sqlx::query_as(
+        "SELECT unit_id, status, updated_at FROM unit_progress ORDER BY updated_at DESC",
+    )
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(Json(rows))
+}
+
 // ── GET /api/progress/:unit_id ────────────────────────────────────────────────
 
 pub async fn get_progress(

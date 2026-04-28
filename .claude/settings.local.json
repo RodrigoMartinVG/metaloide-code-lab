@@ -12,7 +12,11 @@
       "Bash(node -e ' *)",
       "Bash(node /c/Users/rodrigo/Documents/programming-labs/check_js.js)",
       "Bash(node check_js.js)",
-      "Bash(cargo build *)"
+      "Bash(cargo build *)",
+      "Bash(cargo check *)",
+      "Bash(npm list *)",
+      "Bash(npm uninstall *)",
+      "Bash(del \"c:\\\\Users\\\\rodrigo\\\\Documents\\\\programming-labs\\\\web\\\\src\\\\monaco-env.ts\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\rodrigo\\.claude\\projects\\c--Users-rodrigo-Documents-programming-labs\\memory"

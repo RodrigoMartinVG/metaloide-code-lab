@@ -3,12 +3,14 @@ export type Status     = 'locked' | 'available' | 'started' | 'completed' | 'mas
 export type RenderMode = 'blog' | 'studio'
 
 export interface Track {
-  id:           Pillar
-  label:        string
-  tagline:      string
-  color:        string
+  id:            Pillar
+  label:         string
+  tagline:       string
+  color:         string
   prerequisite?: string
-  courses:      Course[]
+  intro?:        string
+  blog?:         Lab
+  courses:       Course[]
 }
 
 export interface Course {
@@ -17,6 +19,8 @@ export interface Course {
   name:        string
   description: string
   status:      Status
+  intro?:      string
+  blog?:       Lab
   units:       Unit[]
 }
 
@@ -39,6 +43,16 @@ export interface PortalBlock   { type: 'portal';           to: Pillar; unitId: s
 export interface AnchorBlock   { type: 'anchor';           to: Pillar; unitId: string; label: string; reason: string }
 export interface ClosingBlock  { type: 'closing-question'; question: string }
 
+export interface NavCardBlock {
+  type:       'nav-card'
+  label:      string
+  description:string
+  targetType: 'track' | 'course' | 'unit'
+  targetId:   string
+  trackId:    Pillar
+  color?:     string
+}
+
 export type Block =
   | ProseBlock
   | CodeBlock
@@ -46,6 +60,7 @@ export type Block =
   | PortalBlock
   | AnchorBlock
   | ClosingBlock
+  | NavCardBlock
 
 export interface Lab {
   unitId: string
@@ -56,5 +71,11 @@ export interface Lab {
 // ── Routing ───────────────────────────────────────────────────────────────────
 
 export type Route =
-  | { view: 'track-map'; trackId: Pillar }
-  | { view: 'unit';      unitId: string; trackId: Pillar }
+  | { view: 'platform' }
+  | { view: 'study'; trackId: Pillar }
+
+// What is currently open in the content panel
+export type StudyContent =
+  | { type: 'track' }
+  | { type: 'course'; courseId: string }
+  | { type: 'unit';   unitId:  string }

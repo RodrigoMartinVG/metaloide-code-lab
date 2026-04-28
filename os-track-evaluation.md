@@ -313,8 +313,125 @@ OS F: Concurrency Primitives
   F.3   Priority inversion y Mars Pathfinder
   F.4   Memory ordering (expandido: Ordering en Rust)
   F.5   [NUEVO] Deadlock: detección y prevención
+
+OS G: IPC y Comunicación  [NUEVO — ver §13 y §14]
+  G.1   Pipes y FIFOs                               ←── extiende D.4 (syscalls) y E.4 (VFS)
+  G.2   Señales                                     ←── portal bidireccional con Course B
+  G.3   Memoria compartida                          ←── cierra el loop de Course C
+  G.4   Sockets Unix                                ←── portal hacia networking
 ```
 
 ---
 
-*Evaluación generada sobre la base de CURRICULUM.md. No cubre UNIT_STRUCTURE.md ni el detalle de BlogPosts individuales.*
+## 13. IPC y Networking — Ausencias del Track
+
+### 13.1 Networking — Ausencia justificable con matiz
+
+El TCP/IP stack completo es una disciplina propia y su ausencia en el OS track tiene un argumento legítimo: el scope de Forja está definido como "entender lo que hay debajo de las abstracciones cotidianas", y el stack de red completo está varios niveles por encima del hardware que el track cubre.
+
+Sin embargo, hay un punto mínimo que el OS track debería tocar: **el socket como file descriptor**. El estudiante que llega hasta E.4 (VFS) ya tiene el modelo — "todo es un archivo, `open()` puede abrir cualquier cosa". Un socket `connect()` pasa por exactamente ese mismo mecanismo. Esa conexión conceptual vale aunque no se implemente un driver de NIC ni un stack TCP.
+
+**Sugerencia mínima**: Agregar en E.4 (VFS) una unidad o sección que establezca el socket como backend de VFS — sin implementación completa, solo el modelo. Esto genera el portal correcto hacia un eventual track de networking sin necesitar un curso completo, y refuerza la narrativa de E.4 como "la abstracción que hace posible `open()` sobre cualquier cosa".
+
+---
+
+### 13.2 IPC — Ausencia problemática
+
+Esta es la omisión más grave del track. El OS track enseña qué son los procesos (Course D) pero no cómo los procesos se comunican entre sí. El resultado es que el estudiante termina el track con entidades aisladas pero sin el sistema.
+
+Los tres mecanismos que faltan son fundamentales, y cada uno tiene portales directos con contenido ya existente en el track:
+
+#### Pipes y FIFOs
+
+El mecanismo de IPC más elemental. Un extremo escribe, el otro lee, el kernel media el buffer. Su ausencia es notable porque el estudiante ya tiene todas las piezas para entenderlo:
+
+- **D.4** ya cubre `read()` y `write()` como syscalls — pipe es la extensión natural.
+- **E.4** (VFS) cubre la abstracción de file descriptor — pipe es exactamente un VFS backend efímero.
+- El lab natural es implementar `pipe()` + `fork()` + pasar datos entre procesos padre e hijo. Es pequeño, verificable, y cierra el loop entre procesos y I/O.
+
+**Portal generado**: pipes → Rust `std::process::Command` (que usa pipes internamente para stdin/stdout).
+
+#### Señales
+
+Esta es la omisión más importante pedagógicamente. Una señal es exactamente un trap de software entregado a un proceso de usuario — **el mismo mecanismo que Course B enseña, pero desde el otro lado**. El kernel convierte un evento (otro proceso llama a `kill()`, el timer expira, el usuario presiona Ctrl+C) en un salto de contexto al signal handler del proceso destino.
+
+Sin señales, el puente entre "el kernel emite interrupciones" y "los procesos reciben eventos asincrónicos" queda incompleto. Y la conexión con el track de Rust es directa: `signal-hook`, `tokio::signal`, el manejo de `SIGTERM` — el estudiante de RC6 usó todo eso sin saber que debajo son traps que el kernel convierte en desvíos del flujo de ejecución.
+
+**Portal generado**: señales → Course B (bidireccional, explícito — "una señal es un trap al revés").  
+**Portal generado**: señales → Rust `tokio::signal` — "lo que async maneja como un Future es esto, en el kernel".
+
+#### Memoria compartida
+
+El complemento natural y pedagógicamente más rico de Course C. Dos procesos mapeando el mismo frame físico en sus espacios de direcciones virtuales distintos es la aplicación más directa de todo lo que Sv39 y el frame allocator enseñan:
+
+- El kernel mapea el mismo frame en dos page tables distintas.
+- Los dos procesos ven el mismo contenido en direcciones virtuales distintas.
+- La sincronización sobre ese contenido compartido es exactamente el problema que Course F resuelve.
+
+El portal memoria compartida → Course F (spinlocks, mutexes) es uno de los más ricos del track y actualmente está implícito pero no existe.
+
+**Portal generado**: memoria compartida → Course C (el mismo frame en dos page tables).  
+**Portal generado**: memoria compartida → Course F (¿cómo sincronizás sin que los dos procesos escriban a la vez?).  
+**Portal generado**: memoria compartida → Rust `Arc<Mutex<T>>` — "esto es lo que Arc hace entre threads. Entre procesos, el kernel hace lo mismo a nivel de frames."
+
+---
+
+### 13.3 Course G — IPC y Comunicación (Propuesta)
+
+La solución más limpia es agregar **Course G** al OS track, después de Course F. No es un track nuevo ni un add-on opcional — es el cierre del track, porque sin IPC los procesos son entidades aisladas y el OS track enseña un sistema incompleto.
+
+| Módulo | Contenido | Portales |
+|---|---|---|
+| G.1 Pipes y FIFOs | `pipe()` syscall, buffer en kernel, `fork()` + pipe, FIFO como archivo nombrado | → D.4 (syscalls), → E.4 (VFS backend) |
+| G.2 Señales | Signal delivery como trap de software, `sigaction()`, señales y reentrancia, signal masks | ↔ Course B (bidireccional), → RC6.2 (tokio::signal) |
+| G.3 Memoria compartida | `mmap()` anónimo compartido, el mismo frame en dos page tables, sincronización necesaria | ↔ Course C, ↔ Course F, → Rust Arc/Mutex |
+| G.4 Sockets Unix | Socket como fd, `AF_UNIX`, client-server mínimo, socket como VFS backend | ↔ E.4, → networking como track futuro |
+
+**Lab de Course G**: implementar un pipeline de dos procesos conectados por pipe, donde el proceso hijo recibe `SIGTERM` del padre y reporta cuántos bytes procesó antes de terminar. Combina G.1 (pipe), G.2 (señales), y syscalls de D.4 en un ejercicio coherente.
+
+---
+
+## 14. Impacto en el Mapa de Cambios
+
+El mapa de la sección §12 se actualiza con el nuevo curso:
+
+```
+OS G: IPC y Comunicación  [NUEVO]
+  G.1   Pipes y FIFOs
+          — pipe() como syscall, buffer en kernel
+          — FIFO como VFS backend nombrado                 ←── portal E.4
+          — lab: fork() + pipe, datos padre→hijo
+
+  G.2   Señales
+          — signal delivery como trap de software          ←── portal bidireccional B
+          — sigaction(), masks, reentrancia
+          — lab: SIGTERM + cleanup ordenado               ←── portal RC6.2 (tokio::signal)
+
+  G.3   Memoria compartida
+          — mmap() anónimo compartido                     ←── portal C.3 (mismo frame)
+          — por qué se necesita sincronización            ←── portal F.1/F.2
+          — lab: productor-consumidor con shm + spinlock
+
+  G.4   Sockets Unix
+          — AF_UNIX como VFS backend                      ←── portal E.4
+          — client-server mínimo en el kernel
+          — portal explícito hacia networking             →── track futuro
+```
+
+**Prerequisito de Course G**: Course D + Course E + Course F completos.
+
+**Portales nuevos que G habilita en el skill graph**:
+
+| Concepto en G | Portal hacia | Dirección |
+|---|---|---|
+| Pipe buffer en kernel | E.4 VFS (pipe como backend) | → |
+| Signal delivery | Course B (trap al revés) | ↔ bidireccional |
+| Signal delivery | RC6.2 tokio::signal | → |
+| mmap compartido | C.3 Sv39 (el mismo frame) | ↔ bidireccional |
+| mmap compartido | F.1 Spinlock (sincronización necesaria) | → |
+| mmap compartido | Rust Arc<Mutex<T>> | → |
+| Socket Unix | E.4 VFS (socket como fd) | ↔ bidireccional |
+
+---
+
+*Evaluación generada sobre la base de CURRICULUM.md y COURSE_MAP.md. No cubre UNIT_STRUCTURE.md ni el detalle de BlogPosts individuales.*

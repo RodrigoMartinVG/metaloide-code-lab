@@ -1,5 +1,15 @@
 import { LitElement, html, css } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
+import { createRef, ref } from 'lit/directives/ref.js'
+import { basicSetup, EditorView } from 'codemirror'
+import { keymap } from '@codemirror/view'
+import { EditorState, Compartment } from '@codemirror/state'
+import { indentWithTab } from '@codemirror/commands'
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { cpp } from '@codemirror/lang-cpp'
+import { rust } from '@codemirror/lang-rust'
+import { tags } from '@lezer/highlight'
+import type { Extension } from '@codemirror/state'
 import type { ExerciseBlock } from '../types.js'
 
 const WS_URL = 'ws://localhost:3000/ws/run'
@@ -9,26 +19,106 @@ interface OutputLine {
   text: string
 }
 
+// ── Theme ─────────────────────────────────────────────────────────────────────
+// CodeMirror 6 calls dom.getRootNode() to locate the shadow root and mounts its
+// styles there, so this works correctly inside Shadow DOM with zero hacks.
+
+const forjaDarkTheme = EditorView.theme({
+  '&': {
+    height:          '100%',
+    backgroundColor: '#0d1117',
+    color:           '#e6edf3',
+  },
+  '.cm-content': {
+    caretColor: '#e05c1a',
+    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+    fontSize:   '13px',
+    lineHeight: '22px',
+    padding:    '8px 0',
+  },
+  '.cm-scroller':   { overflow: 'auto' },
+  '&.cm-focused':   { outline: 'none' },
+  '.cm-cursor, .cm-dropCursor': { borderLeftColor: '#e05c1a' },
+  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': {
+    backgroundColor: '#388bfd33',
+  },
+  '.cm-gutters': {
+    backgroundColor: '#0d1117',
+    color:           '#3d4557',
+    border:          'none',
+    borderRight:     '1px solid #21262d',
+  },
+  '.cm-lineNumbers .cm-gutterElement': { padding: '0 10px 0 6px', minWidth: '32px' },
+  '.cm-activeLineGutter': { backgroundColor: '#1a1f2a', color: '#6b7280' },
+  '.cm-activeLine':       { backgroundColor: '#1a1f2a' },
+  '.cm-foldPlaceholder':  { backgroundColor: '#21262d', color: '#8b949e', border: 'none' },
+  '.cm-tooltip':          { backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '4px' },
+  '.cm-tooltip-autocomplete > ul > li[aria-selected]': {
+    backgroundColor: '#1f2937',
+    color:           '#e6edf3',
+  },
+  '.cm-matchingBracket':  { color: '#e6edf3 !important', backgroundColor: '#30363d' },
+}, { dark: true })
+
+const forjaHighlight = HighlightStyle.define([
+  { tag: tags.keyword,                       color: '#ff7b72' },
+  { tag: tags.operator,                      color: '#ff7b72' },
+  { tag: tags.controlKeyword,                color: '#ff7b72' },
+  { tag: tags.definitionKeyword,             color: '#ff7b72' },
+  { tag: tags.moduleKeyword,                 color: '#ff7b72' },
+  { tag: tags.typeName,                      color: '#ffa657' },
+  { tag: tags.className,                     color: '#ffa657' },
+  { tag: tags.function(tags.variableName),   color: '#d2a8ff' },
+  { tag: tags.function(tags.propertyName),   color: '#d2a8ff' },
+  { tag: tags.definition(tags.variableName), color: '#e6edf3' },
+  { tag: tags.variableName,                  color: '#e6edf3' },
+  { tag: tags.propertyName,                  color: '#e6edf3' },
+  { tag: tags.string,                        color: '#a5d6ff' },
+  { tag: tags.special(tags.string),          color: '#a5d6ff' },
+  { tag: tags.regexp,                        color: '#a5d6ff' },
+  { tag: tags.number,                        color: '#79c0ff' },
+  { tag: tags.bool,                          color: '#79c0ff' },
+  { tag: tags.null,                          color: '#79c0ff' },
+  { tag: tags.comment,                       color: '#8b949e', fontStyle: 'italic' },
+  { tag: tags.lineComment,                   color: '#8b949e', fontStyle: 'italic' },
+  { tag: tags.blockComment,                  color: '#8b949e', fontStyle: 'italic' },
+  { tag: tags.meta,                          color: '#8b949e' },
+  { tag: tags.processingInstruction,         color: '#ffa657' },
+  { tag: tags.bracket,                       color: '#e6edf3' },
+  { tag: tags.punctuation,                   color: '#e6edf3' },
+  { tag: tags.derefOperator,                 color: '#ff7b72' },
+  { tag: tags.self,                          color: '#ff7b72' },
+  { tag: tags.namespace,                     color: '#ffa657' },
+])
+
+function langExtension(lang: string): Extension {
+  if (lang === 'c' || lang === 'cpp') return cpp()
+  if (lang === 'rust') return rust()
+  return []
+}
+
 @customElement('forja-editor-panel')
 export class ForjaEditorPanel extends LitElement {
   @property({ type: Object }) exercise!: ExerciseBlock
 
-  @state() private _code    = ''
   @state() private _lines:  OutputLine[] = []
   @state() private _status: 'idle' | 'running' | 'success' | 'error' = 'idle'
 
-  private _ws: WebSocket | null = null
+  private _view:    EditorView | null = null
+  private _ws:      WebSocket | null = null
+  private _editorEl = createRef<HTMLDivElement>()
+  private _langComp = new Compartment()
+
+  // ── Styles ────────────────────────────────────────────────────────────────
 
   static styles = css`
     :host {
       display:        flex;
       flex-direction: column;
-      height:         100%;
-      background:     #0a0d12;
+      flex:           1;
+      min-height:     0;
       overflow:       hidden;
     }
-
-    /* ── Exercise bar ────────────────────────────────────────────────────── */
 
     .exercise-bar {
       padding:       12px 18px;
@@ -95,60 +185,11 @@ export class ForjaEditorPanel extends LitElement {
     .btn-run:hover:not(:disabled) { background: var(--accent-glow); }
     .btn-run:disabled { background: var(--bg-elevated); color: var(--text-muted); cursor: default; }
 
-    /* ── Editor area ─────────────────────────────────────────────────────── */
-
-    .editor-area {
-      flex:     1;
-      position: relative;
-      overflow: hidden;
+    .editor-container {
+      flex:       1;
       min-height: 0;
+      overflow:   hidden;
     }
-
-    .gutter {
-      position:       absolute;
-      top: 0; left: 0; bottom: 0;
-      width:          40px;
-      background:     #0d1117;
-      border-right:   1px solid #1a1f2a;
-      padding:        14px 0;
-      display:        flex;
-      flex-direction: column;
-      align-items:    flex-end;
-      overflow:       hidden;
-      user-select:    none;
-      pointer-events: none;
-    }
-
-    .line-num {
-      font-family:  var(--font-mono);
-      font-size:    11px;
-      color:        #3d4557;
-      line-height:  1.5;
-      padding-right:8px;
-      height:       19.5px;
-    }
-
-    textarea.editor {
-      position:    absolute;
-      top: 0; left: 40px; right: 0; bottom: 0;
-      background:  #0d1117;
-      color:       var(--text-primary);
-      font-family: var(--font-mono);
-      font-size:   13px;
-      line-height: 1.5;
-      padding:     14px 16px;
-      border:      none;
-      outline:     none;
-      resize:      none;
-      tab-size:    4;
-      caret-color: var(--accent);
-      width:       calc(100% - 40px);
-      box-sizing:  border-box;
-    }
-
-    textarea.editor::selection { background: rgba(56,139,253,0.2); }
-
-    /* ── Output panel ────────────────────────────────────────────────────── */
 
     .output-panel {
       height:         200px;
@@ -169,12 +210,12 @@ export class ForjaEditorPanel extends LitElement {
     }
 
     .output-label {
-      font-family: var(--font-prose);
-      font-size:   11px;
-      color:       var(--text-secondary);
-      background:  var(--bg-elevated);
-      padding:     2px 8px;
-      border-radius:4px;
+      font-family:   var(--font-prose);
+      font-size:     11px;
+      color:         var(--text-secondary);
+      background:    var(--bg-elevated);
+      padding:       2px 8px;
+      border-radius: 4px;
     }
 
     .output-status {
@@ -187,9 +228,9 @@ export class ForjaEditorPanel extends LitElement {
     }
 
     .status-dot {
-      width:        6px;
-      height:       6px;
-      border-radius:50%;
+      width:         6px;
+      height:        6px;
+      border-radius: 50%;
     }
     .status-dot.running { background: var(--warning); animation: pulse 1s infinite; }
     .status-dot.success { background: var(--success); }
@@ -207,16 +248,13 @@ export class ForjaEditorPanel extends LitElement {
     }
 
     .idle-msg {
-      color:      var(--text-muted);
-      font-style: italic;
-      font-family:var(--font-prose);
-      font-size:  12px;
+      color:       var(--text-muted);
+      font-style:  italic;
+      font-family: var(--font-prose);
+      font-size:   12px;
     }
 
-    /* ── Output line colors ──────────────────────────────────────────────── */
-
-    .out-line { white-space: pre-wrap; word-break: break-all; display: block; }
-
+    .out-line     { white-space: pre-wrap; word-break: break-all; display: block; }
     .out-compiler { color: var(--text-muted); }
     .out-stdout   { color: var(--text-primary); }
     .out-stderr   { color: var(--warning); }
@@ -224,46 +262,48 @@ export class ForjaEditorPanel extends LitElement {
     .out-info     { color: var(--text-muted); font-style: italic; }
   `
 
-  connectedCallback() {
-    super.connectedCallback()
-    this._code = this.exercise?.starter ?? ''
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+  override firstUpdated() {
+    const container = this._editorEl.value
+    if (!container) return
+
+    this._view = new EditorView({
+      state: EditorState.create({
+        doc: this.exercise?.starter ?? '',
+        extensions: [
+          basicSetup,
+          this._langComp.of(langExtension(this.exercise?.language ?? '')),
+          forjaDarkTheme,
+          syntaxHighlighting(forjaHighlight),
+          keymap.of([
+            { key: 'Ctrl-Enter', mac: 'Cmd-Enter', run: () => { this._run(); return true } },
+            indentWithTab,
+          ]),
+        ],
+      }),
+      parent: container,
+    })
   }
 
-  updated(changed: Map<string, unknown>) {
-    if (changed.has('exercise') && this.exercise) {
-      this._reset()
+  override updated(changed: Map<string, unknown>) {
+    if (changed.has('exercise') && this.exercise && this._view) {
+      this._view.dispatch({
+        changes: { from: 0, to: this._view.state.doc.length, insert: this.exercise.starter },
+        effects: this._langComp.reconfigure(langExtension(this.exercise.language)),
+      })
+      this._lines  = []
+      this._status = 'idle'
     }
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback()
     this._ws?.close()
+    this._view?.destroy()
   }
 
-  private _lineCount() { return this._code.split('\n').length }
-
-  private _onInput(e: Event) {
-    this._code = (e.target as HTMLTextAreaElement).value
-    this.requestUpdate()
-  }
-
-  private _onKeydown(e: KeyboardEvent) {
-    const ta = e.target as HTMLTextAreaElement
-
-    if (e.key === 'Tab') {
-      e.preventDefault()
-      const s = ta.selectionStart
-      ta.value = ta.value.slice(0, s) + '    ' + ta.value.slice(ta.selectionEnd)
-      ta.selectionStart = ta.selectionEnd = s + 4
-      this._onInput(e)
-      return
-    }
-
-    if (e.key === 'Enter' && e.ctrlKey) {
-      e.preventDefault()
-      this._run()
-    }
-  }
+  // ── Run ───────────────────────────────────────────────────────────────────
 
   private _run() {
     if (this._status === 'running') return
@@ -276,20 +316,23 @@ export class ForjaEditorPanel extends LitElement {
     this._ws = ws
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ language: this.exercise.language, code: this._code }))
+      ws.send(JSON.stringify({
+        language: this.exercise.language,
+        code:     this._view?.state.doc.toString() ?? this.exercise.starter,
+      }))
     }
 
     ws.onmessage = (e: MessageEvent) => {
       const msg = JSON.parse(e.data as string) as { type: string; data: unknown }
-
       if (msg.type === 'done') {
-        const d  = msg.data as { exit_code: number }
-        this._status = d.exit_code === 0 ? 'success' : 'error'
-        this._ws     = null
+        const d       = msg.data as { exit_code: number }
+        this._status  = d.exit_code === 0 ? 'success' : 'error'
+        this._ws      = null
       } else {
-        const kind = msg.type as OutputLine['kind']
-        const text = String(msg.data)
-        this._lines = [...this._lines, { kind, text }]
+        this._lines = [
+          ...this._lines,
+          { kind: msg.type as OutputLine['kind'], text: String(msg.data) },
+        ]
       }
       this.requestUpdate()
     }
@@ -312,12 +355,18 @@ export class ForjaEditorPanel extends LitElement {
 
   private _reset() {
     this._ws?.close()
-    this._ws     = null
-    this._code   = this.exercise?.starter ?? ''
+    this._ws = null
+    if (this._view) {
+      this._view.dispatch({
+        changes: { from: 0, to: this._view.state.doc.length, insert: this.exercise?.starter ?? '' },
+      })
+    }
     this._lines  = []
     this._status = 'idle'
     this.requestUpdate()
   }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   render() {
     if (!this.exercise) {
@@ -325,7 +374,6 @@ export class ForjaEditorPanel extends LitElement {
     }
 
     const running = this._status === 'running'
-    const lines   = this._lineCount()
 
     return html`
       <div class="exercise-bar">
@@ -344,21 +392,7 @@ export class ForjaEditorPanel extends LitElement {
         </div>
       </div>
 
-      <div class="editor-area">
-        <div class="gutter">
-          ${Array.from({ length: lines }, (_, i) => html`<div class="line-num">${i + 1}</div>`)}
-        </div>
-        <textarea
-          class="editor"
-          .value=${this._code}
-          @input=${this._onInput}
-          @keydown=${this._onKeydown}
-          spellcheck="false"
-          autocorrect="off"
-          autocapitalize="off"
-          autocomplete="off"
-        ></textarea>
-      </div>
+      <div class="editor-container" ${ref(this._editorEl)}></div>
 
       <div class="output-panel">
         <div class="output-header">
